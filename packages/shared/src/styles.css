@@ -1,18 +1,21 @@
 :root {
   color-scheme: light;
-  --ep-bg: #f4f8f7;
-  --ep-surface: #ffffff;
-  --ep-surface-soft: #f7fbfa;
-  --ep-border: #dbe8e4;
+  --ep-bg: #f3f8fb;
+  --ep-surface: rgba(255, 255, 255, 0.92);
+  --ep-surface-soft: #f7fcfb;
+  --ep-border: #d8e5ef;
   --ep-border-strong: #b8d2ca;
-  --ep-text: #16211f;
-  --ep-muted: #697b76;
-  --ep-primary: #0f9f7a;
-  --ep-primary-strong: #07795f;
-  --ep-secondary: #2266d8;
+  --ep-text: #152236;
+  --ep-muted: #607086;
+  --ep-weak: #8ba0b8;
+  --ep-primary: #138a58;
+  --ep-primary-deep: #075c43;
+  --ep-primary-strong: #075c43;
+  --ep-secondary: #0891b2;
   --ep-warning: #d17a10;
-  --ep-danger: #c94643;
-  --ep-shadow: 0 18px 42px rgba(27, 68, 59, 0.1);
+  --ep-danger: #dc2626;
+  --ep-shadow: 0 18px 45px rgba(4, 71, 54, 0.11);
+  --ep-glow: 0 0 0 1px rgba(20, 184, 166, 0.14), 0 16px 42px rgba(8, 145, 178, 0.12);
   font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
@@ -24,10 +27,11 @@ body {
   margin: 0;
   color: var(--ep-text);
   background:
-    linear-gradient(rgba(15, 159, 122, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 102, 216, 0.035) 1px, transparent 1px),
-    var(--ep-bg);
-  background-size: 28px 28px;
+    linear-gradient(90deg, rgba(14, 116, 144, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(19, 138, 88, 0.055) 1px, transparent 1px),
+    linear-gradient(135deg, #f7fcfb 0%, #eef8fb 46%, #f6fbf4 100%);
+  background-size: 36px 36px, 36px 36px, auto;
+  font-size: 14px;
 }
 
 button,
@@ -50,14 +54,16 @@ button {
   padding: 0 12px;
   border: 1px solid var(--ep-border);
   border-radius: 6px;
-  color: var(--ep-text);
-  background: #fff;
+  color: #254055;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px rgba(15, 61, 74, 0.05);
 }
 
 .ep-button.primary {
-  border-color: var(--ep-primary);
   color: #fff;
-  background: linear-gradient(135deg, var(--ep-primary), var(--ep-secondary));
+  border-color: transparent;
+  background: linear-gradient(135deg, #0f766e, #16a34a);
+  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.22);
 }
 
 .ep-button.icon {
@@ -74,7 +80,7 @@ button {
   border-radius: 6px;
   padding: 7px 10px;
   color: var(--ep-text);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   outline: none;
 }
 
@@ -105,7 +111,11 @@ button {
   color: #50625d;
   font-size: 13px;
   font-weight: 650;
-  background: var(--ep-surface-soft);
+  background: linear-gradient(90deg, rgba(228, 248, 239, 0.7), rgba(230, 248, 251, 0.4));
+}
+
+.ep-table tbody tr:hover td {
+  background: rgba(230, 248, 251, 0.4);
 }
 
 .ep-status {
@@ -135,10 +145,10 @@ button {
 }
 
 .micro-workspace {
-  min-height: calc(100vh - 108px);
+  min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 14px;
+  gap: 12px;
 }
 
 .workspace-header {
@@ -146,17 +156,21 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px;
-  border: 1px solid var(--ep-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--ep-shadow);
+  min-height: 70px;
+  padding: 14px 16px;
+  border: 1px solid rgba(19, 138, 88, 0.16);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 253, 246, 0.92)),
+    linear-gradient(90deg, rgba(19, 138, 88, 0.12), rgba(8, 145, 178, 0.08));
+  box-shadow: var(--ep-glow);
 }
 
 .workspace-header h2 {
   margin: 0 0 4px;
   font-size: 22px;
   line-height: 1.2;
+  color: #102a3f;
 }
 
 .workspace-header span {
@@ -177,7 +191,8 @@ button {
   padding: 0 10px;
   border: 1px solid var(--ep-border);
   border-radius: 6px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px rgba(15, 61, 74, 0.05);
 }
 
 .workspace-search input {
@@ -197,9 +212,12 @@ button {
 .workspace-table-wrap {
   min-width: 0;
   overflow: auto;
-  border: 1px solid var(--ep-border);
-  border-radius: 8px;
-  background: #fff;
+  min-height: 430px;
+  border: 1px solid rgba(8, 145, 178, 0.18);
+  border-radius: 10px;
+  background: var(--ep-surface);
+  box-shadow: 0 14px 34px rgba(15, 61, 74, 0.07);
+  backdrop-filter: blur(10px);
 }
 
 .workspace-footer {
@@ -207,6 +225,7 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  padding-top: 2px;
 }
 
 .workspace-drawer {
