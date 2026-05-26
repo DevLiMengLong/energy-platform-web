@@ -1,18 +1,35 @@
 <script setup lang="ts">
 import {
+  Activity,
+  BadgeDollarSign,
+  BookOpen,
+  Boxes,
   Building2,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Clock3,
+  Cpu,
+  Factory,
+  Gauge,
+  GitBranch,
+  KeyRound,
   Leaf,
   LogOut,
   Menu,
+  Network,
+  RadioTower,
   RefreshCw,
+  Scale,
+  SquareMenu,
+  UserCog,
+  Users,
+  UsersRound,
   ShieldCheck
 } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, type Component } from 'vue';
 import { ApiClient, pickLabel, type CurrentUser, type Language, type MenuNode, type ModuleMenus } from '@energy-platform/shared';
 import MicroAppHost from './components/MicroAppHost.vue';
 
@@ -43,9 +60,36 @@ const shellContext = computed(() => ({
   routePath: activeRoutePath.value,
   language: language.value
 }));
+const menuIconMap: Record<string, Component> = {
+  Activity,
+  BadgeDollarSign,
+  BookOpen,
+  Boxes,
+  Building2,
+  Clock3,
+  Cpu,
+  Factory,
+  Gauge,
+  GitBranch,
+  KeyRound,
+  Leaf,
+  Menu,
+  MenuSquare: SquareMenu,
+  Network,
+  RadioTower,
+  Scale,
+  ShieldCheck,
+  UserCog,
+  Users,
+  UsersRound
+};
 
 function flattenMenus(menus: MenuNode[]): MenuNode[] {
   return menus.flatMap((menu) => [menu, ...flattenMenus(menu.children ?? [])]).filter((menu) => Boolean(menu.routePath));
+}
+
+function menuIcon(icon?: string): Component {
+  return icon ? (menuIconMap[icon] ?? Menu) : Menu;
 }
 
 async function login() {
@@ -208,7 +252,9 @@ onMounted(loadMenus);
             @click="selectMenu(menu.routePath)"
           >
             <span class="menu-label">
-              <ChevronRight :size="15" />
+              <span class="menu-icon">
+                <component :is="menuIcon(menu.icon)" :size="17" />
+              </span>
               <span>{{ pickLabel(language, menu.nameZh, menu.nameEn) }}</span>
             </span>
           </button>
