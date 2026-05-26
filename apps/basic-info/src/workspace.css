@@ -1,0 +1,123 @@
+.micro-workspace {
+  min-height: calc(100vh - 108px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--ep-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ep-shadow);
+}
+
+.workspace-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.workspace-header span {
+  color: var(--ep-muted);
+  font-size: 13px;
+}
+
+.workspace-actions,
+.workspace-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-search {
+  min-width: 220px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ep-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.workspace-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+}
+
+.workspace-alert {
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--ep-danger);
+  background: rgba(201, 70, 67, 0.1);
+}
+
+.workspace-table-wrap {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--ep-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.workspace-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.workspace-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(17, 34, 31, 0.2);
+}
+
+.drawer-panel {
+  width: min(420px, 100%);
+  height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 22px;
+  background: #fff;
+  box-shadow: -20px 0 40px rgba(21, 48, 43, 0.16);
+}
+
+.drawer-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-panel h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.drawer-field {
+  display: grid;
+  gap: 7px;
+  color: var(--ep-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .workspace-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-actions {
+    flex-wrap: wrap;
+  }
+}

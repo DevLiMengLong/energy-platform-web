@@ -1,0 +1,25 @@
+{
+  "name": "energy-platform-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:portal": "npm --workspace @energy-platform/portal run dev",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "5.2.1",
+    "@types/node": "22.10.2",
+    "lucide-vue-next": "0.468.0",
+    "typescript": "5.7.2",
+    "vite": "6.4.2",
+    "vue": "3.5.13",
+    "vue-tsc": "2.1.10"
+  },
+  "devDependencies": {}
+}
