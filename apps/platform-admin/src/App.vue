@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Save, Search, X } from 'lucide-vue-next';
 import {
   ApiClient,
   findPage,
+  formatCellValue,
   pickLabel,
   platformPages,
   type FormFieldConfig,
@@ -64,14 +65,11 @@ function flattenTree(nodes: Record<string, unknown>[], level = 0): Record<string
 }
 
 function displayValue(row: Record<string, unknown>, key: string): string {
-  const value = row[key];
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-  if (typeof value === 'boolean') {
-    return value ? label('是', 'Yes') : label('否', 'No');
-  }
-  return String(value);
+  return formatCellValue(row[key], props.context.language, key);
+}
+
+function statusDisabled(row: Record<string, unknown>, key: string): boolean {
+  return row[key] !== 'ENABLED';
 }
 
 function openCreate() {
@@ -170,7 +168,7 @@ onMounted(loadData);
             <td v-for="(column, colIndex) in columns" :key="column.key">
               <span
                 v-if="column.type === 'status'"
-                :class="['ep-status', { disabled: displayValue(row, column.key) !== 'ENABLED' }]"
+                :class="['ep-status', { disabled: statusDisabled(row, column.key) }]"
               >
                 {{ displayValue(row, column.key) }}
               </span>
