@@ -421,6 +421,12 @@
 
 .micro-host {
   flex: 1 1 auto;
+  display: flex;
+}
+
+.micro-host__mount {
+  flex: 1 1 auto;
+  display: flex;
 }
 
 @media (max-width: 820px) {
