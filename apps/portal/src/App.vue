@@ -6,10 +6,8 @@ import {
   Boxes,
   Building2,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Clock3,
   Cpu,
   Factory,
@@ -27,7 +25,8 @@ import {
   UserCog,
   Users,
   UsersRound,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref, type Component } from 'vue';
 import { ApiClient, pickLabel, type CurrentUser, type Language, type MenuNode, type ModuleMenus } from '@energy-platform/shared';
@@ -38,6 +37,11 @@ interface LoginResponse {
   user: CurrentUser;
 }
 
+interface VisitedTab {
+  moduleCode: string;
+  routePath: string;
+}
+
 const token = ref(localStorage.getItem('energy_token') ?? '');
 const user = ref<CurrentUser | null>(null);
 const language = ref<Language>((localStorage.getItem('energy_lang') as Language) || 'zh');
@@ -45,7 +49,7 @@ const modules = ref<ModuleMenus[]>([]);
 const activeModuleCode = ref('');
 const activeRoutePath = ref('');
 const sideCollapsed = ref(false);
-const topnavCollapsed = ref(false);
+const visitedTabs = ref<VisitedTab[]>([]);
 const loading = ref(false);
 const error = ref('');
 const loginForm = reactive({ account: '', password: '' });
@@ -54,6 +58,13 @@ const api = computed(() => new ApiClient('/api', () => token.value));
 const activeModule = computed(() => modules.value.find((module) => module.code === activeModuleCode.value) ?? null);
 const activeMenus = computed(() => flattenMenus(activeModule.value?.menus ?? []));
 const activeMenu = computed(() => activeMenus.value.find((menu) => menu.routePath === activeRoutePath.value) ?? activeMenus.value[0] ?? null);
+const visibleTabs = computed(() => visitedTabs.value
+  .map((tab) => {
+    const module = modules.value.find((item) => item.code === tab.moduleCode);
+    const menu = flattenMenus(module?.menus ?? []).find((item) => item.routePath === tab.routePath);
+    return module && menu ? { ...tab, module, menu } : null;
+  })
+  .filter((tab): tab is VisitedTab & { module: ModuleMenus; menu: MenuNode } => Boolean(tab)));
 const shellContext = computed(() => ({
   apiBase: '/api',
   token: token.value,
@@ -138,11 +149,44 @@ function selectModule(code: string) {
   const nextModule = modules.value.find((module) => module.code === code);
   const firstMenu = flattenMenus(nextModule?.menus ?? [])[0];
   activeRoutePath.value = firstMenu?.routePath ?? '';
+  rememberTab(code, activeRoutePath.value);
 }
 
 function selectMenu(routePath?: string) {
   if (routePath) {
     activeRoutePath.value = routePath;
+    rememberTab(activeModuleCode.value, routePath);
+  }
+}
+
+function rememberTab(moduleCode: string, routePath?: string) {
+  if (!moduleCode || !routePath) {
+    return;
+  }
+  const exists = visitedTabs.value.some((tab) => tab.moduleCode === moduleCode && tab.routePath === routePath);
+  if (!exists) {
+    visitedTabs.value = [...visitedTabs.value, { moduleCode, routePath }].slice(-10);
+  }
+}
+
+function openVisitedTab(tab: VisitedTab) {
+  activeModuleCode.value = tab.moduleCode;
+  activeRoutePath.value = tab.routePath;
+  rememberTab(tab.moduleCode, tab.routePath);
+}
+
+function closeVisitedTab(tab: VisitedTab, event: MouseEvent) {
+  event.stopPropagation();
+  const index = visitedTabs.value.findIndex((item) => item.moduleCode === tab.moduleCode && item.routePath === tab.routePath);
+  if (index < 0 || visitedTabs.value.length <= 1) {
+    return;
+  }
+  const isActive = tab.moduleCode === activeModuleCode.value && tab.routePath === activeRoutePath.value;
+  const nextTabs = visitedTabs.value.filter((_, itemIndex) => itemIndex !== index);
+  visitedTabs.value = nextTabs;
+  if (isActive) {
+    const next = nextTabs[Math.max(0, index - 1)] ?? nextTabs[0];
+    openVisitedTab(next);
   }
 }
 
@@ -157,6 +201,7 @@ function logout() {
   modules.value = [];
   activeModuleCode.value = '';
   activeRoutePath.value = '';
+  visitedTabs.value = [];
   localStorage.removeItem('energy_token');
 }
 
@@ -189,19 +234,11 @@ onMounted(loadMenus);
   </main>
 
   <main v-else class="portal-app">
-    <header :class="['topbar', { 'topnav-collapsed': topnavCollapsed }]">
+    <header class="topbar">
       <div class="portal-brand">
         <span class="brand-mark small"><Leaf :size="18" /></span>
         <span>{{ language === 'zh' ? '能源数据平台' : 'Energy Platform' }}</span>
       </div>
-      <button
-        class="nav-toggle"
-        :title="topnavCollapsed ? (language === 'zh' ? '展开顶部菜单' : 'Expand top menu') : (language === 'zh' ? '收起顶部菜单' : 'Collapse top menu')"
-        @click="topnavCollapsed = !topnavCollapsed"
-      >
-        <ChevronDown v-if="topnavCollapsed" :size="17" />
-        <ChevronUp v-else :size="17" />
-      </button>
       <nav class="topnav" aria-label="modules">
         <button
           v-for="module in modules"
@@ -233,16 +270,6 @@ onMounted(loadMenus);
 
     <div :class="['portal-shell', { 'side-collapsed': sideCollapsed }]">
       <aside class="portal-sidebar">
-        <div class="side-toggle-row">
-          <button
-            class="nav-toggle"
-            :title="sideCollapsed ? (language === 'zh' ? '展开左侧菜单' : 'Expand side menu') : (language === 'zh' ? '收起左侧菜单' : 'Collapse side menu')"
-            @click="sideCollapsed = !sideCollapsed"
-          >
-            <ChevronRight v-if="sideCollapsed" :size="17" />
-            <ChevronLeft v-else :size="17" />
-          </button>
-        </div>
         <div class="side-title">{{ language === 'zh' ? '菜单' : 'Menu' }}</div>
         <nav class="side" aria-label="menus">
           <button
@@ -260,13 +287,36 @@ onMounted(loadMenus);
           </button>
         </nav>
         <div v-if="!activeMenus.length" class="side-empty">{{ language === 'zh' ? '暂无菜单' : 'No menus' }}</div>
+        <button
+          class="side-collapse-handle"
+          :title="sideCollapsed ? (language === 'zh' ? '展开左侧菜单' : 'Expand side menu') : (language === 'zh' ? '收起左侧菜单' : 'Collapse side menu')"
+          @click="sideCollapsed = !sideCollapsed"
+        >
+          <ChevronRight v-if="sideCollapsed" :size="15" />
+          <ChevronLeft v-else :size="15" />
+        </button>
       </aside>
 
       <section class="workspace">
-        <div class="breadcrumb">
-          <span>{{ activeModule ? pickLabel(language, activeModule.nameZh, activeModule.nameEn) : '-' }}</span>
-          <ChevronRight :size="15" />
-          <strong>{{ activeMenu ? pickLabel(language, activeMenu.nameZh, activeMenu.nameEn) : '-' }}</strong>
+        <div class="visited-tabs" aria-label="visited pages">
+          <div
+            v-for="tab in visibleTabs"
+            :key="`${tab.moduleCode}-${tab.routePath}`"
+            :class="['visited-tab', { active: tab.moduleCode === activeModuleCode && tab.routePath === activeRoutePath }]"
+          >
+            <button type="button" class="tab-main" @click="openVisitedTab(tab)">
+              <span>{{ pickLabel(language, tab.menu.nameZh, tab.menu.nameEn) }}</span>
+            </button>
+            <button
+              v-if="visibleTabs.length > 1"
+              type="button"
+              class="tab-close"
+              :title="language === 'zh' ? '关闭标签' : 'Close tab'"
+              @click="closeVisitedTab(tab, $event)"
+            >
+              <X :size="13" />
+            </button>
+          </div>
         </div>
         <div v-if="error" class="shell-alert">{{ error }}</div>
         <MicroAppHost

@@ -173,15 +173,10 @@ button {
 }
 
 .workspace-header h2 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 22px;
   line-height: 1.2;
   color: #102a3f;
-}
-
-.workspace-header span {
-  color: var(--ep-muted);
-  font-size: 13px;
 }
 
 .workspace-actions,

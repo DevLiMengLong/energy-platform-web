@@ -658,7 +658,6 @@ onMounted(loadData);
     <header class="workspace-header">
       <div>
         <h2>{{ label(page.titleZh, page.titleEn) }}</h2>
-        <span>{{ total }} {{ label('条记录', 'records') }}</span>
       </div>
       <div class="workspace-actions">
         <button class="ep-button icon" :title="label('刷新', 'Refresh')" @click="loadData">
