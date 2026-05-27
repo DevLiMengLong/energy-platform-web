@@ -21,11 +21,13 @@ import {
   X
 } from 'lucide-vue-next';
 import {
+  ApiError,
   ApiClient,
   findPage,
   formatCellValue,
   pickLabel,
   platformPages,
+  useResizableTableColumns,
   type ActionConfig,
   type ColumnConfig,
   type FormFieldConfig,
@@ -44,6 +46,7 @@ const total = ref(0);
 const rows = ref<Record<string, unknown>[]>([]);
 const treeNodes = ref<Record<string, unknown>[]>([]);
 const collapsedTreeRows = ref<string[]>([]);
+const loadRequestSeq = ref(0);
 const loading = ref(false);
 const error = ref('');
 const feedback = ref('');
@@ -61,6 +64,20 @@ const filters = reactive<Record<string, string>>({});
 const form = reactive<Record<string, string | number | boolean | null>>({});
 const page = computed(() => findPage(pages, props.context.routePath));
 const columns = computed(() => page.value.columns ?? []);
+const mainTableColumns = useResizableTableColumns({
+  columns,
+  storageKey: computed(() => `energy-platform:table-widths:${page.value.routePath}:main`)
+});
+const paramColumns = computed<ColumnConfig[]>(() => [
+  { key: 'paramCode', labelZh: '参数编码', labelEn: 'Param Code' },
+  { key: 'paramName', labelZh: '参数名称', labelEn: 'Param Name' },
+  { key: 'unit', labelZh: '单位', labelEn: 'Unit' },
+  { key: 'collectionPointName', labelZh: '绑定点位', labelEn: 'Bound Point' }
+]);
+const paramTableColumns = useResizableTableColumns({
+  columns: paramColumns,
+  storageKey: computed(() => `energy-platform:table-widths:${page.value.routePath}:params`)
+});
 const filterConfigs = computed(() => page.value.filters ?? []);
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / size.value)));
 const topActions = computed(() => page.value.topActions ?? []);
@@ -152,11 +169,17 @@ function actionIcon(action: ActionConfig) {
 }
 
 async function loadData() {
+  const requestSeq = loadRequestSeq.value + 1;
+  loadRequestSeq.value = requestSeq;
   loading.value = true;
   error.value = '';
   try {
     if (page.value.mode === 'tree' || page.value.mode === 'treeTable') {
-      treeNodes.value = await client.value.get<Record<string, unknown>[]>(page.value.endpoint, activeFilterParams());
+      const nodes = await client.value.get<Record<string, unknown>[]>(page.value.endpoint, activeFilterParams());
+      if (requestSeq !== loadRequestSeq.value) {
+        return;
+      }
+      treeNodes.value = nodes;
       applyTreePagination();
     } else {
       const data = await client.value.get<PageResult>(page.value.endpoint, {
@@ -164,15 +187,20 @@ async function loadData() {
         page: pageNo.value,
         size: size.value
       });
+      if (requestSeq !== loadRequestSeq.value) {
+        return;
+      }
       rows.value = data.rows;
       total.value = data.total;
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-    rows.value = [];
-    total.value = 0;
+    if (requestSeq === loadRequestSeq.value) {
+      error.value = friendlyError(err);
+    }
   } finally {
-    loading.value = false;
+    if (requestSeq === loadRequestSeq.value) {
+      loading.value = false;
+    }
   }
 }
 
@@ -244,6 +272,9 @@ function setFilterValue(key: string, event: Event) {
 }
 
 function searchTable() {
+  if (loading.value) {
+    return;
+  }
   pageNo.value = 1;
   loadData();
 }
@@ -256,6 +287,9 @@ function resetFilters() {
 }
 
 function goPage(nextPage: number) {
+  if (loading.value) {
+    return;
+  }
   const target = Math.min(Math.max(nextPage, 1), pageCount.value);
   if (target === pageNo.value) {
     return;
@@ -269,6 +303,9 @@ function goPage(nextPage: number) {
 }
 
 function changePageSize(event: Event) {
+  if (loading.value) {
+    return;
+  }
   size.value = Number((event.target as HTMLSelectElement).value);
   pageNo.value = 1;
   if (page.value.mode === 'tree' || page.value.mode === 'treeTable') {
@@ -287,6 +324,9 @@ function handleRowAction(action: ActionConfig, row: Record<string, unknown>) {
 }
 
 function handleAction(action: ActionConfig, row: Record<string, unknown> | null) {
+  if (loading.value) {
+    return;
+  }
   activeAction.value = action;
   activeRow.value = row;
   error.value = '';
@@ -431,6 +471,9 @@ function resetForm(fields: FormFieldConfig[], row: Record<string, unknown> | nul
 }
 
 async function submitDrawer() {
+  if (loading.value) {
+    return;
+  }
   const action = activeAction.value;
   if (!action) {
     return;
@@ -636,7 +679,14 @@ function showFeedback(message: string) {
 }
 
 function setError(err: unknown) {
-  error.value = err instanceof Error ? err.message : String(err);
+  error.value = friendlyError(err);
+}
+
+function friendlyError(err: unknown): string {
+  if (err instanceof ApiError && err.code === 'NETWORK_ERROR') {
+    return label('网络请求失败，请稍后重试', 'Network request failed, please try again');
+  }
+  return err instanceof Error ? err.message : String(err);
 }
 
 watch(() => props.context.routePath, () => {
@@ -660,7 +710,7 @@ onMounted(loadData);
         <h2>{{ label(page.titleZh, page.titleEn) }}</h2>
       </div>
       <div class="workspace-actions">
-        <button class="ep-button icon" :title="label('刷新', 'Refresh')" @click="loadData">
+        <button class="ep-button icon" :title="label('刷新', 'Refresh')" :disabled="loading" @click="loadData">
           <RefreshCw :size="16" />
         </button>
         <button
@@ -668,6 +718,7 @@ onMounted(loadData);
           :key="action.key"
           type="button"
           :class="['ep-button', { primary: action.primary, danger: action.danger }]"
+          :disabled="loading"
           @click="handleTopAction(action)"
         >
           <component :is="actionIcon(action)" :size="16" />
@@ -700,11 +751,11 @@ onMounted(loadData);
         />
       </label>
       <div class="filter-actions">
-        <button class="ep-button primary" @click="searchTable">
+        <button class="ep-button primary" :disabled="loading" @click="searchTable">
           <Search :size="16" />
           {{ label('查询', 'Search') }}
         </button>
-        <button class="ep-button" @click="resetFilters">{{ label('重置', 'Reset') }}</button>
+        <button class="ep-button" :disabled="loading" @click="resetFilters">{{ label('重置', 'Reset') }}</button>
       </div>
     </section>
 
@@ -713,10 +764,23 @@ onMounted(loadData);
 
     <div class="workspace-table-wrap">
       <table v-if="rows.length" :class="['ep-table', { 'menu-tree-table': page.mode === 'treeTable' }]">
+        <colgroup>
+          <col v-for="column in columns" :key="column.key" :style="mainTableColumns.columnStyle(column)" />
+        </colgroup>
         <thead>
           <tr>
-            <th v-for="column in columns" :key="column.key" :style="{ width: column.width }">
-              {{ label(column.labelZh, column.labelEn) }}
+            <th v-for="column in columns" :key="column.key" :style="mainTableColumns.columnStyle(column)" scope="col">
+              <span class="ep-table-head-content">
+                <span class="ep-table-head-label">{{ label(column.labelZh, column.labelEn) }}</span>
+              </span>
+              <button
+                type="button"
+                class="ep-column-resizer"
+                :aria-label="`${label(column.labelZh, column.labelEn)} ${label('列宽调整', 'column resize')}`"
+                :title="label('拖拽调整列宽，双击恢复自适应', 'Drag to resize, double click to auto fit')"
+                @pointerdown="mainTableColumns.startColumnResize($event, column)"
+                @dblclick.stop.prevent="mainTableColumns.resetColumnWidth(column)"
+              ></button>
             </th>
           </tr>
         </thead>
@@ -726,6 +790,7 @@ onMounted(loadData);
               v-for="(column, colIndex) in columns"
               :key="column.key"
               :class="{ 'actions-cell': column.type === 'actions' }"
+              :style="mainTableColumns.columnStyle(column)"
             >
               <span
                 v-if="column.type === 'status'"
@@ -739,6 +804,7 @@ onMounted(loadData);
                   :key="action.key"
                   type="button"
                   :class="['row-action', { danger: action.danger }]"
+                  :disabled="loading"
                   @click="handleRowAction(action, row)"
                 >
                   {{ actionLabel(action) }}
@@ -769,17 +835,18 @@ onMounted(loadData);
 
     <footer class="workspace-footer">
       <span>{{ label('共', 'Total') }} {{ total }} {{ label('条', 'items') }}</span>
-      <button class="page-no" :disabled="pageNo <= 1" @click="goPage(pageNo - 1)">‹</button>
+      <button class="page-no" :disabled="loading || pageNo <= 1" @click="goPage(pageNo - 1)">‹</button>
       <button
         v-for="item in pageCount"
         :key="item"
         :class="['page-no', { active: item === pageNo }]"
+        :disabled="loading"
         @click="goPage(item)"
       >
         {{ item }}
       </button>
-      <button class="page-no" :disabled="pageNo >= pageCount" @click="goPage(pageNo + 1)">›</button>
-      <select class="ep-select page-size-select" :value="size" @change="changePageSize">
+      <button class="page-no" :disabled="loading || pageNo >= pageCount" @click="goPage(pageNo + 1)">›</button>
+      <select class="ep-select page-size-select" :value="size" :disabled="loading" @change="changePageSize">
         <option v-for="option in pageSizeOptions" :key="option" :value="option">
           {{ option }} {{ label('条/页', '/ page') }}
         </option>
@@ -848,8 +915,18 @@ onMounted(loadData);
         <div v-else-if="drawerMode === 'import'" class="drawer-grid">
           <label class="drawer-field full">
             <span>{{ label('导入文件', 'Import File') }}</span>
-            <input class="ep-input" type="file" @change="setImportFile" />
-            <small>{{ importFileName || label('请选择文件', 'Choose a file') }}</small>
+            <div class="upload-box">
+              <input type="file" accept=".xlsx,.xls" @change="setImportFile" />
+              <div class="upload-content">
+                <Upload class="upload-icon" :size="40" />
+                <div v-if="importFileName" class="upload-file-name" :title="importFileName">{{ importFileName }}</div>
+                <div v-else>
+                  {{ label('将文件拖到此处，或', 'Drag file here, or ') }}
+                  <span class="upload-link">{{ label('点击上传', 'click to upload') }}</span>
+                </div>
+                <div class="upload-tip">{{ label('支持扩展名：.xlsx .xls', 'Supported: .xlsx .xls') }}</div>
+              </div>
+            </div>
           </label>
           <label class="drawer-field">
             <span>{{ label('导入模式', 'Import Mode') }}</span>
@@ -889,26 +966,47 @@ onMounted(loadData);
 
         <div v-else-if="drawerMode === 'params'" class="params-panel">
           <div class="params-toolbar">
-            <button type="button" class="ep-button primary" @click="submitAction(activeAction!, activeRow, { addParam: true })">
+            <button
+              type="button"
+              class="ep-button primary"
+              :disabled="loading"
+              @click="submitAction(activeAction!, activeRow, { addParam: true })"
+            >
               <Plus :size="16" />
               {{ label('新增参数', 'Add Param') }}
             </button>
           </div>
           <table v-if="paramRows.length" class="ep-table params-table">
+            <colgroup>
+              <col v-for="column in paramColumns" :key="column.key" :style="paramTableColumns.columnStyle(column)" />
+            </colgroup>
             <thead>
               <tr>
-                <th>{{ label('参数编码', 'Param Code') }}</th>
-                <th>{{ label('参数名称', 'Param Name') }}</th>
-                <th>{{ label('单位', 'Unit') }}</th>
-                <th>{{ label('绑定点位', 'Bound Point') }}</th>
+                <th
+                  v-for="column in paramColumns"
+                  :key="column.key"
+                  :style="paramTableColumns.columnStyle(column)"
+                  scope="col"
+                >
+                  <span class="ep-table-head-content">
+                    <span class="ep-table-head-label">{{ label(column.labelZh, column.labelEn) }}</span>
+                  </span>
+                  <button
+                    type="button"
+                    class="ep-column-resizer"
+                    :aria-label="`${label(column.labelZh, column.labelEn)} ${label('列宽调整', 'column resize')}`"
+                    :title="label('拖拽调整列宽，双击恢复自适应', 'Drag to resize, double click to auto fit')"
+                    @pointerdown="paramTableColumns.startColumnResize($event, column)"
+                    @dblclick.stop.prevent="paramTableColumns.resetColumnWidth(column)"
+                  ></button>
+                </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="param in paramRows" :key="String(param.id)">
-                <td>{{ displayValue(param, 'paramCode') }}</td>
-                <td>{{ displayValue(param, 'paramName') }}</td>
-                <td>{{ displayValue(param, 'unit') }}</td>
-                <td>{{ displayValue(param, 'collectionPointName') }}</td>
+                <td v-for="column in paramColumns" :key="column.key" :style="paramTableColumns.columnStyle(column)">
+                  {{ displayValue(param, column.key, column.type) }}
+                </td>
               </tr>
             </tbody>
           </table>

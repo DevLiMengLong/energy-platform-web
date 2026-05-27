@@ -36,14 +36,19 @@ export class ApiClient {
 
   private async request<T>(url: string, init: RequestInit): Promise<T> {
     const token = this.getToken();
-    const response = await fetch(url, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...init.headers
-      }
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...init.headers
+        }
+      });
+    } catch (err) {
+      throw new ApiError(err instanceof Error ? err.message : 'Network request failed', 'NETWORK_ERROR');
+    }
     const payload = (await response.json()) as ApiResponse<T>;
     if (!response.ok || payload.code !== 'SUCCESS') {
       throw new ApiError(payload.message || 'Request failed', payload.code || String(response.status), payload.traceId);

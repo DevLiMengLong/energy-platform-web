@@ -6,6 +6,7 @@ import {
   Boxes,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -28,7 +29,7 @@ import {
   ShieldCheck,
   X
 } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref, type Component } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } from 'vue';
 import { ApiClient, pickLabel, type CurrentUser, type Language, type MenuNode, type ModuleMenus } from '@energy-platform/shared';
 import MicroAppHost from './components/MicroAppHost.vue';
 
@@ -42,18 +43,28 @@ interface VisitedTab {
   routePath: string;
 }
 
+const MAX_VISITED_TABS = 5;
+const ACTIVE_MODULE_KEY = 'energy_active_module';
+const ACTIVE_ROUTE_KEY = 'energy_active_route';
+const VISITED_TABS_KEY = 'energy_visited_tabs';
 const token = ref(localStorage.getItem('energy_token') ?? '');
 const user = ref<CurrentUser | null>(null);
 const language = ref<Language>((localStorage.getItem('energy_lang') as Language) || 'zh');
 const modules = ref<ModuleMenus[]>([]);
-const activeModuleCode = ref('');
-const activeRoutePath = ref('');
+const activeModuleCode = ref(localStorage.getItem(ACTIVE_MODULE_KEY) ?? '');
+const activeRoutePath = ref(localStorage.getItem(ACTIVE_ROUTE_KEY) ?? '');
 const sideCollapsed = ref(false);
-const visitedTabs = ref<VisitedTab[]>([]);
+const visitedTabs = ref<VisitedTab[]>(readVisitedTabs());
+const languageMenuOpen = ref(false);
+const languageSwitcher = ref<HTMLElement | null>(null);
 const loading = ref(false);
 const error = ref('');
 const loginForm = reactive({ account: '', password: '' });
 const api = computed(() => new ApiClient('/api', () => token.value));
+const languageOptions: Array<{ value: Language; label: string }> = [
+  { value: 'zh', label: '简体中文' },
+  { value: 'en', label: 'English' }
+];
 
 const activeModule = computed(() => modules.value.find((module) => module.code === activeModuleCode.value) ?? null);
 const activeMenus = computed(() => flattenMenus(activeModule.value?.menus ?? []));
@@ -71,6 +82,7 @@ const shellContext = computed(() => ({
   routePath: activeRoutePath.value,
   language: language.value
 }));
+const languageLabel = computed(() => languageOptions.find((option) => option.value === language.value)?.label ?? '简体中文');
 const menuIconMap: Record<string, Component> = {
   Activity,
   BadgeDollarSign,
@@ -97,6 +109,41 @@ const menuIconMap: Record<string, Component> = {
 
 function flattenMenus(menus: MenuNode[]): MenuNode[] {
   return menus.flatMap((menu) => [menu, ...flattenMenus(menu.children ?? [])]).filter((menu) => Boolean(menu.routePath));
+}
+
+function readVisitedTabs(): VisitedTab[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(VISITED_TABS_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .filter((item): item is VisitedTab => Boolean(item?.moduleCode && item?.routePath))
+      .slice(-MAX_VISITED_TABS);
+  } catch {
+    return [];
+  }
+}
+
+function persistActiveState() {
+  if (activeModuleCode.value) {
+    localStorage.setItem(ACTIVE_MODULE_KEY, activeModuleCode.value);
+  }
+  if (activeRoutePath.value) {
+    localStorage.setItem(ACTIVE_ROUTE_KEY, activeRoutePath.value);
+  }
+}
+
+function persistVisitedTabs() {
+  localStorage.setItem(VISITED_TABS_KEY, JSON.stringify(visitedTabs.value.slice(-MAX_VISITED_TABS)));
+}
+
+function findModule(code: string): ModuleMenus | undefined {
+  return modules.value.find((module) => module.code === code);
+}
+
+function routeInModule(module: ModuleMenus | undefined, routePath: string): boolean {
+  return Boolean(routePath && flattenMenus(module?.menus ?? []).some((menu) => menu.routePath === routePath));
 }
 
 function menuIcon(icon?: string): Component {
@@ -127,8 +174,14 @@ async function loadMenus() {
   error.value = '';
   try {
     modules.value = await api.value.get<ModuleMenus[]>('/basic/me/menus');
-    if (!activeModuleCode.value) {
-      const preferred = modules.value.find((module) => module.code === 'platform' || module.code === 'basic') ?? modules.value[0];
+    const activeModuleCandidate = findModule(activeModuleCode.value);
+    if (routeInModule(activeModuleCandidate, activeRoutePath.value)) {
+      rememberTab(activeModuleCode.value, activeRoutePath.value);
+    } else {
+      const preferred =
+        activeModuleCandidate ??
+        modules.value.find((module) => module.code === 'platform' || module.code === 'basic') ??
+        modules.value[0];
       selectModule(preferred?.code ?? '');
     }
     if (!user.value) {
@@ -149,12 +202,14 @@ function selectModule(code: string) {
   const nextModule = modules.value.find((module) => module.code === code);
   const firstMenu = flattenMenus(nextModule?.menus ?? [])[0];
   activeRoutePath.value = firstMenu?.routePath ?? '';
+  persistActiveState();
   rememberTab(code, activeRoutePath.value);
 }
 
 function selectMenu(routePath?: string) {
   if (routePath) {
     activeRoutePath.value = routePath;
+    persistActiveState();
     rememberTab(activeModuleCode.value, routePath);
   }
 }
@@ -163,15 +218,15 @@ function rememberTab(moduleCode: string, routePath?: string) {
   if (!moduleCode || !routePath) {
     return;
   }
-  const exists = visitedTabs.value.some((tab) => tab.moduleCode === moduleCode && tab.routePath === routePath);
-  if (!exists) {
-    visitedTabs.value = [...visitedTabs.value, { moduleCode, routePath }].slice(-10);
-  }
+  const nextTabs = visitedTabs.value.filter((tab) => !(tab.moduleCode === moduleCode && tab.routePath === routePath));
+  visitedTabs.value = [...nextTabs, { moduleCode, routePath }].slice(-MAX_VISITED_TABS);
+  persistVisitedTabs();
 }
 
 function openVisitedTab(tab: VisitedTab) {
   activeModuleCode.value = tab.moduleCode;
   activeRoutePath.value = tab.routePath;
+  persistActiveState();
   rememberTab(tab.moduleCode, tab.routePath);
 }
 
@@ -184,15 +239,28 @@ function closeVisitedTab(tab: VisitedTab, event: MouseEvent) {
   const isActive = tab.moduleCode === activeModuleCode.value && tab.routePath === activeRoutePath.value;
   const nextTabs = visitedTabs.value.filter((_, itemIndex) => itemIndex !== index);
   visitedTabs.value = nextTabs;
+  persistVisitedTabs();
   if (isActive) {
     const next = nextTabs[Math.max(0, index - 1)] ?? nextTabs[0];
     openVisitedTab(next);
   }
 }
 
-function setLanguage(event: Event) {
-  language.value = (event.target as HTMLSelectElement).value as Language;
+function toggleLanguageMenu() {
+  languageMenuOpen.value = !languageMenuOpen.value;
+}
+
+function setLanguage(nextLanguage: Language) {
+  language.value = nextLanguage;
   localStorage.setItem('energy_lang', language.value);
+  languageMenuOpen.value = false;
+}
+
+function closeLanguageMenu(event: PointerEvent) {
+  if (!languageMenuOpen.value || languageSwitcher.value?.contains(event.target as Node)) {
+    return;
+  }
+  languageMenuOpen.value = false;
 }
 
 function logout() {
@@ -203,9 +271,19 @@ function logout() {
   activeRoutePath.value = '';
   visitedTabs.value = [];
   localStorage.removeItem('energy_token');
+  localStorage.removeItem(ACTIVE_MODULE_KEY);
+  localStorage.removeItem(ACTIVE_ROUTE_KEY);
+  localStorage.removeItem(VISITED_TABS_KEY);
 }
 
-onMounted(loadMenus);
+onMounted(() => {
+  loadMenus();
+  document.addEventListener('pointerdown', closeLanguageMenu);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', closeLanguageMenu);
+});
 </script>
 
 <template>
@@ -256,10 +334,32 @@ onMounted(loadMenus);
         <button class="icon-btn" :title="language === 'zh' ? '刷新菜单' : 'Refresh menus'" @click="loadMenus">
           <RefreshCw :size="16" />
         </button>
-        <select class="lang-select" :value="language" @change="setLanguage">
-          <option value="zh">简体中文</option>
-          <option value="en">English</option>
-        </select>
+        <div ref="languageSwitcher" class="language-switcher">
+          <button
+            type="button"
+            :class="['lang-trigger', { open: languageMenuOpen }]"
+            aria-haspopup="listbox"
+            :aria-expanded="languageMenuOpen"
+            @click.stop="toggleLanguageMenu"
+            @keydown.escape.stop.prevent="languageMenuOpen = false"
+          >
+            <span>{{ languageLabel }}</span>
+            <ChevronDown :size="15" :class="['lang-arrow', { open: languageMenuOpen }]" />
+          </button>
+          <div v-if="languageMenuOpen" class="language-menu" role="listbox">
+            <button
+              v-for="option in languageOptions"
+              :key="option.value"
+              type="button"
+              :class="['language-option', { selected: option.value === language }]"
+              role="option"
+              :aria-selected="option.value === language"
+              @click="setLanguage(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
         <span class="user-text">{{ user?.username }}</span>
         <span class="avatar">{{ user?.username?.slice(0, 1) }}</span>
         <button class="icon-btn" :title="language === 'zh' ? '退出' : 'Sign out'" @click="logout">
