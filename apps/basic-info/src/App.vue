@@ -14,17 +14,22 @@ import {
 
 const props = defineProps<{ context: MicroAppContext }>();
 const pages = basicPages;
-const keyword = ref('');
+const pageSizeOptions = [10, 20, 50];
 const pageNo = ref(1);
-const size = ref(10);
+const size = ref(20);
 const total = ref(0);
 const rows = ref<Record<string, unknown>[]>([]);
+const treeNodes = ref<Record<string, unknown>[]>([]);
+const collapsedTreeRows = ref<string[]>([]);
 const loading = ref(false);
 const error = ref('');
 const drawerOpen = ref(false);
+const filters = reactive<Record<string, string>>({});
 const form = reactive<Record<string, string | number | boolean | null>>({});
 const page = computed(() => findPage(pages, props.context.routePath));
 const columns = computed(() => page.value.columns ?? []);
+const filterConfigs = computed(() => page.value.filters ?? []);
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / size.value)));
 const client = computed(() => new ApiClient(props.context.apiBase, () => props.context.token));
 
 function label(zh: string, en: string) {
@@ -35,13 +40,12 @@ async function loadData() {
   loading.value = true;
   error.value = '';
   try {
-    if (page.value.mode === 'tree') {
-      const data = await client.value.get<Record<string, unknown>[]>(page.value.endpoint);
-      rows.value = flattenTree(data);
-      total.value = rows.value.length;
+    if (page.value.mode === 'tree' || page.value.mode === 'treeTable') {
+      treeNodes.value = await client.value.get<Record<string, unknown>[]>(page.value.endpoint, activeFilterParams());
+      applyTreePagination();
     } else {
       const data = await client.value.get<PageResult>(page.value.endpoint, {
-        keyword: keyword.value,
+        ...activeFilterParams(),
         page: pageNo.value,
         size: size.value
       });
@@ -60,16 +64,116 @@ async function loadData() {
 function flattenTree(nodes: Record<string, unknown>[], level = 0): Record<string, unknown>[] {
   return nodes.flatMap((node) => {
     const children = Array.isArray(node.children) ? (node.children as Record<string, unknown>[]) : [];
-    return [{ ...node, _level: level }, ...flattenTree(children, level + 1)];
+    const nodeKey = treeRowKey(node);
+    const row = { ...node, _level: level, _hasChildren: children.length > 0 };
+    if (collapsedTreeRows.value.includes(nodeKey)) {
+      return [row];
+    }
+    return [row, ...flattenTree(children, level + 1)];
   });
 }
 
-function displayValue(row: Record<string, unknown>, key: string): string {
+function activeFilterParams(): Record<string, string> {
+  return filterConfigs.value.reduce<Record<string, string>>((params, filter) => {
+    const value = filters[filter.key];
+    if (value) {
+      params[filter.key] = value;
+    }
+    return params;
+  }, {});
+}
+
+function displayValue(row: Record<string, unknown>, key: string, type?: string): string {
+  if (type === 'actions') {
+    return actionText();
+  }
+  if (type === 'visibility') {
+    return Number(row[key]) ? label('隐藏', 'Hidden') : label('显示', 'Visible');
+  }
+  if (type === 'boolean' && typeof row[key] !== 'boolean') {
+    return Number(row[key]) ? label('是', 'Yes') : label('否', 'No');
+  }
   return formatCellValue(row[key], props.context.language, key);
 }
 
 function statusDisabled(row: Record<string, unknown>, key: string): boolean {
   return row[key] !== 'ENABLED';
+}
+
+function actionText(): string {
+  if (page.value.routePath.includes('/menus')) {
+    return label('编辑 / 删除', 'Edit / Delete');
+  }
+  if (page.value.routePath.includes('/users')) {
+    return label('编辑 / 详情 / 停用', 'Edit / Detail / Disable');
+  }
+  return label('编辑 / 停用', 'Edit / Disable');
+}
+
+function treeRowKey(row: Record<string, unknown>): string {
+  return String(row.id ?? row.code ?? row.menuCode ?? row.nameZh ?? JSON.stringify(row));
+}
+
+function hasChildren(row: Record<string, unknown>): boolean {
+  return Boolean(row._hasChildren);
+}
+
+function toggleTreeRow(row: Record<string, unknown>) {
+  const key = treeRowKey(row);
+  collapsedTreeRows.value = collapsedTreeRows.value.includes(key)
+    ? collapsedTreeRows.value.filter((item) => item !== key)
+    : [...collapsedTreeRows.value, key];
+  applyTreePagination();
+}
+
+function applyTreePagination() {
+  const flattened = flattenTree(treeNodes.value);
+  total.value = flattened.length;
+  const maxPage = Math.max(1, Math.ceil(total.value / size.value));
+  if (pageNo.value > maxPage) {
+    pageNo.value = maxPage;
+  }
+  const start = (pageNo.value - 1) * size.value;
+  rows.value = flattened.slice(start, start + size.value);
+}
+
+function setFilterValue(key: string, event: Event) {
+  filters[key] = (event.target as HTMLInputElement | HTMLSelectElement).value;
+}
+
+function searchTable() {
+  pageNo.value = 1;
+  loadData();
+}
+
+function resetFilters() {
+  filterConfigs.value.forEach((filter) => {
+    filters[filter.key] = '';
+  });
+  searchTable();
+}
+
+function goPage(nextPage: number) {
+  const target = Math.min(Math.max(nextPage, 1), pageCount.value);
+  if (target === pageNo.value) {
+    return;
+  }
+  pageNo.value = target;
+  if (page.value.mode === 'tree' || page.value.mode === 'treeTable') {
+    applyTreePagination();
+  } else {
+    loadData();
+  }
+}
+
+function changePageSize(event: Event) {
+  size.value = Number((event.target as HTMLSelectElement).value);
+  pageNo.value = 1;
+  if (page.value.mode === 'tree' || page.value.mode === 'treeTable') {
+    applyTreePagination();
+  } else {
+    loadData();
+  }
 }
 
 function openCreate() {
@@ -124,6 +228,11 @@ function setFieldValue(key: string, event: Event) {
 watch(() => props.context.routePath, () => {
   pageNo.value = 1;
   drawerOpen.value = false;
+  collapsedTreeRows.value = [];
+  Object.keys(filters).forEach((key) => delete filters[key]);
+  filterConfigs.value.forEach((filter) => {
+    filters[filter.key] = '';
+  });
   loadData();
 });
 
@@ -138,10 +247,6 @@ onMounted(loadData);
         <span>{{ total }} {{ label('条记录', 'records') }}</span>
       </div>
       <div class="workspace-actions">
-        <label v-if="page.mode !== 'tree'" class="workspace-search">
-          <Search :size="16" />
-          <input v-model="keyword" :placeholder="label('搜索', 'Search')" @keyup.enter="loadData" />
-        </label>
         <button class="ep-button icon" :title="label('刷新', 'Refresh')" @click="loadData">
           <RefreshCw :size="16" />
         </button>
@@ -152,10 +257,42 @@ onMounted(loadData);
       </div>
     </header>
 
+    <section v-if="filterConfigs.length" class="workspace-filters">
+      <label v-for="filter in filterConfigs" :key="filter.key" class="filter-field">
+        <span>{{ label(filter.labelZh, filter.labelEn) }}</span>
+        <select
+          v-if="filter.type === 'select'"
+          class="ep-select"
+          :value="filters[filter.key] ?? ''"
+          @change="setFilterValue(filter.key, $event)"
+        >
+          <option v-for="option in filter.options" :key="option.value" :value="option.value">
+            {{ label(option.labelZh, option.labelEn) }}
+          </option>
+        </select>
+        <input
+          v-else
+          class="ep-input"
+          :type="filter.type === 'date' ? 'date' : 'text'"
+          :value="filters[filter.key] ?? ''"
+          :placeholder="label('请输入', 'Please input')"
+          @input="setFilterValue(filter.key, $event)"
+          @keyup.enter="searchTable"
+        />
+      </label>
+      <div class="filter-actions">
+        <button class="ep-button primary" @click="searchTable">
+          <Search :size="16" />
+          {{ label('查询', 'Search') }}
+        </button>
+        <button class="ep-button" @click="resetFilters">{{ label('重置', 'Reset') }}</button>
+      </div>
+    </section>
+
     <div v-if="error" class="workspace-alert">{{ error }}</div>
 
     <div class="workspace-table-wrap">
-      <table v-if="rows.length" class="ep-table">
+      <table v-if="rows.length" :class="['ep-table', { 'menu-tree-table': page.mode === 'treeTable' }]">
         <thead>
           <tr>
             <th v-for="column in columns" :key="column.key" :style="{ width: column.width }">
@@ -170,10 +307,23 @@ onMounted(loadData);
                 v-if="column.type === 'status'"
                 :class="['ep-status', { disabled: statusDisabled(row, column.key) }]"
               >
-                {{ displayValue(row, column.key) }}
+                {{ displayValue(row, column.key, column.type) }}
+              </span>
+              <span
+                v-else-if="column.tree"
+                :class="['tree-menu-cell', `level-${Number(row._level ?? 0)}`]"
+              >
+                <button
+                  :class="['tree-toggle', { empty: !hasChildren(row) }]"
+                  :disabled="!hasChildren(row)"
+                  @click.stop="toggleTreeRow(row)"
+                >
+                  {{ hasChildren(row) ? (collapsedTreeRows.includes(treeRowKey(row)) ? '▸' : '▾') : '' }}
+                </button>
+                <span class="tree-menu-name">{{ displayValue(row, column.key, column.type) }}</span>
               </span>
               <span v-else :style="colIndex === 0 ? { paddingLeft: `${Number(row._level ?? 0) * 18}px` } : undefined">
-                {{ displayValue(row, column.key) }}
+                {{ displayValue(row, column.key, column.type) }}
               </span>
             </td>
           </tr>
@@ -182,14 +332,23 @@ onMounted(loadData);
       <div v-else class="ep-empty">{{ loading ? label('加载中', 'Loading') : label('暂无数据', 'No data') }}</div>
     </div>
 
-    <footer v-if="page.mode !== 'tree'" class="workspace-footer">
-      <button class="ep-button" :disabled="pageNo <= 1" @click="pageNo--; loadData()">
-        {{ label('上一页', 'Previous') }}
+    <footer class="workspace-footer">
+      <span>{{ label('共', 'Total') }} {{ total }} {{ label('条', 'items') }}</span>
+      <button class="page-no" :disabled="pageNo <= 1" @click="goPage(pageNo - 1)">‹</button>
+      <button
+        v-for="item in pageCount"
+        :key="item"
+        :class="['page-no', { active: item === pageNo }]"
+        @click="goPage(item)"
+      >
+        {{ item }}
       </button>
-      <span>{{ pageNo }} / {{ Math.max(1, Math.ceil(total / size)) }}</span>
-      <button class="ep-button" :disabled="pageNo >= Math.ceil(total / size)" @click="pageNo++; loadData()">
-        {{ label('下一页', 'Next') }}
-      </button>
+      <button class="page-no" :disabled="pageNo >= pageCount" @click="goPage(pageNo + 1)">›</button>
+      <select class="ep-select page-size-select" :value="size" @change="changePageSize">
+        <option v-for="option in pageSizeOptions" :key="option" :value="option">
+          {{ option }} {{ label('条/页', '/ page') }}
+        </option>
+      </select>
     </footer>
 
     <div v-if="drawerOpen && page.create" class="workspace-drawer">

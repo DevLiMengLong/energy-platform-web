@@ -12,6 +12,8 @@ const enumLabels: Record<string, EnumLabel> = {
   NOT_INITIALIZED: { zh: '未初始化', en: 'Not initialized' },
   AUTHORIZED: { zh: '已授权', en: 'Authorized' },
   UNAUTHORIZED: { zh: '未授权', en: 'Unauthorized' },
+  BOUND: { zh: '已绑定', en: 'Bound' },
+  UNBOUND: { zh: '未绑定', en: 'Unbound' },
 
   PLATFORM_ADMIN: { zh: '平台管理员', en: 'Platform admin' },
   TENANT_ADMIN: { zh: '租户管理员', en: 'Tenant admin' },

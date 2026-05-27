@@ -62,7 +62,16 @@ export interface ColumnConfig {
   labelZh: string;
   labelEn: string;
   width?: string;
-  type?: 'status' | 'boolean' | 'datetime' | 'number';
+  type?: 'status' | 'boolean' | 'datetime' | 'number' | 'visibility' | 'actions';
+  tree?: boolean;
+}
+
+export interface FilterConfig {
+  key: string;
+  labelZh: string;
+  labelEn: string;
+  type: 'input' | 'select' | 'date';
+  options?: Array<{ labelZh: string; labelEn: string; value: string }>;
 }
 
 export interface FormFieldConfig {
@@ -79,8 +88,9 @@ export interface PageConfig {
   titleZh: string;
   titleEn: string;
   endpoint: string;
-  mode?: 'table' | 'tree';
+  mode?: 'table' | 'tree' | 'treeTable';
   columns?: ColumnConfig[];
+  filters?: FilterConfig[];
   create?: {
     titleZh: string;
     titleEn: string;
