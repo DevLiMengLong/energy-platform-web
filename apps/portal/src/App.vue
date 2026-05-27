@@ -48,7 +48,7 @@ const sideCollapsed = ref(false);
 const topnavCollapsed = ref(false);
 const loading = ref(false);
 const error = ref('');
-const loginForm = reactive({ account: 'admin', password: 'admin123' });
+const loginForm = reactive({ account: '', password: '' });
 const api = computed(() => new ApiClient('/api', () => token.value));
 
 const activeModule = computed(() => modules.value.find((module) => module.code === activeModuleCode.value) ?? null);
