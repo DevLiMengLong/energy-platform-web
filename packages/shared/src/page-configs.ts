@@ -1,4 +1,4 @@
-import type { FilterConfig, PageConfig } from './types';
+import type { ActionConfig, FilterConfig, PageConfig } from './types';
 
 const statusColumn = { key: 'status', labelZh: '状态', labelEn: 'Status', type: 'status' as const, width: '112px' };
 const actionsColumn = { key: '_actions', labelZh: '操作', labelEn: 'Actions', type: 'actions' as const, width: '150px' };
@@ -89,6 +89,27 @@ function selectFilter(key: string, labelZh: string, labelEn: string, options: Fi
   return { key, labelZh, labelEn, type: 'select', options };
 }
 
+function action(
+  key: string,
+  labelZh: string,
+  labelEn: string,
+  kind: ActionConfig['kind'],
+  options: Pick<ActionConfig, 'primary' | 'danger' | 'endpoint'> = {}
+): ActionConfig {
+  return { key, labelZh, labelEn, kind, ...options };
+}
+
+const commonActions = {
+  edit: action('edit', '编辑', 'Edit', 'edit'),
+  detail: action('detail', '详情', 'Detail', 'detail'),
+  view: action('view', '查看', 'View', 'detail'),
+  disable: action('disable', '停用', 'Disable', 'disable', { danger: true }),
+  enable: action('enable', '启用', 'Enable', 'enable'),
+  delete: action('delete', '删除', 'Delete', 'delete', { danger: true }),
+  export: action('export', 'Excel 导出', 'Excel Export', 'export'),
+  import: action('import', 'Excel 导入', 'Excel Import', 'import')
+};
+
 export const platformPages: PageConfig[] = [
   {
     routePath: '/platform/tenants',
@@ -101,6 +122,15 @@ export const platformPages: PageConfig[] = [
       selectFilter('status', '状态', 'Status', statusOptions),
       selectFilter('initStatus', '初始化状态', 'Init Status', initStatusOptions),
       inputFilter('createdAt', '创建时间', 'Created At')
+    ],
+    topActions: [
+      action('createTenant', '新增租户', 'Add Tenant', 'create', { primary: true }),
+      action('exportTenants', '导出租户', 'Export Tenants', 'export'),
+      action('batchDisableTenants', '停用租户', 'Disable Tenants', 'disable', { danger: true })
+    ],
+    rowActions: [
+      commonActions.edit,
+      action('disableTenant', '停用', 'Disable', 'disable', { danger: true, endpoint: '/platform/tenants/{id}/disable' })
     ],
     columns: [
       { key: 'tenantMark', labelZh: '租户标识', labelEn: 'Tenant Mark' },
@@ -134,6 +164,15 @@ export const platformPages: PageConfig[] = [
       selectFilter('status', '状态', 'Status', statusOptions),
       inputFilter('lastLoginAt', '最近登录', 'Last Login')
     ],
+    topActions: [
+      action('createTenantAdmin', '新增租户超管', 'Add Tenant Admin', 'create', { primary: true }),
+      action('resetTenantAdminPassword', '重置密码', 'Reset Password', 'resetPassword'),
+      action('disableTenantAdmin', '禁用账号', 'Disable Account', 'disable', { danger: true })
+    ],
+    rowActions: [
+      action('resetPassword', '重置密码', 'Reset Password', 'resetPassword', { endpoint: '/platform/tenant-admins/{id}/reset-password' }),
+      action('disableAccount', '禁用', 'Disable', 'disable', { danger: true })
+    ],
     columns: [
       { key: 'tenantMark', labelZh: '所属租户', labelEn: 'Tenant' },
       { key: 'account', labelZh: '管理员账号', labelEn: 'Admin Account' },
@@ -150,6 +189,15 @@ export const platformPages: PageConfig[] = [
     titleEn: 'Subsystems',
     endpoint: '/platform/subsystems',
     filters: [inputFilter('keyword', '系统名称', 'System Name')],
+    topActions: [
+      action('createSubsystem', '新增子系统', 'Add Subsystem', 'create', { primary: true }),
+      action('importSubsystems', '导入子系统', 'Import Subsystems', 'import'),
+      action('exportSubsystems', '导出子系统', 'Export Subsystems', 'export')
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.disable
+    ],
     columns: [
       { key: 'nameZh', labelZh: '系统名称', labelEn: 'System Name' },
       { key: 'subsystemCode', labelZh: '系统标识', labelEn: 'System Code' },
@@ -168,6 +216,15 @@ export const platformPages: PageConfig[] = [
     filters: [
       selectFilter('subsystemCode', '子系统', 'Subsystem', subsystemOptions),
       inputFilter('keyword', '菜单名称', 'Menu Name')
+    ],
+    topActions: [
+      action('createMenu', '新增菜单', 'Add Menu', 'create', { primary: true }),
+      action('importMenus', '导入菜单', 'Import Menus', 'import'),
+      action('exportMenus', '导出菜单', 'Export Menus', 'export')
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.delete
     ],
     columns: [
       { key: 'nameZh', labelZh: '菜单名称', labelEn: 'Menu Name', tree: true, width: '190px' },
@@ -191,6 +248,13 @@ export const platformPages: PageConfig[] = [
       selectFilter('subsystemCode', '子系统', 'Subsystem', subsystemOptions),
       selectFilter('authStatus', '授权状态', 'Auth Status', authStatusOptions)
     ],
+    topActions: [
+      action('assignTenantPermissions', '分配权限', 'Assign Permissions', 'assign', { primary: true, endpoint: '/platform/tenant-permissions' })
+    ],
+    rowActions: [
+      action('assignTenantPermissions', '分配权限', 'Assign Permissions', 'assign', { endpoint: '/platform/tenant-permissions' }),
+      commonActions.view
+    ],
     columns: [
       { key: 'tenantMark', labelZh: '租户标识', labelEn: 'Tenant Mark' },
       { key: 'tenantName', labelZh: '租户名称', labelEn: 'Tenant Name' },
@@ -210,6 +274,15 @@ export const basicPages: PageConfig[] = [
     endpoint: '/basic/org-nodes/tree',
     mode: 'treeTable',
     filters: [inputFilter('keyword', '组织名称/编码', 'Org name/code'), inputFilter('parentKeyword', '上级组织', 'Parent org')],
+    topActions: [
+      action('createOrgNode', '新增节点', 'Add Node', 'create', { primary: true }),
+      action('importOrgNodes', '导入组织', 'Import Org', 'import'),
+      action('moveOrgNodes', '调整层级', 'Adjust Level', 'generic', { endpoint: '/basic/org-nodes/move' })
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.detail
+    ],
     columns: [
       { key: 'orgName', labelZh: '组织名称', labelEn: 'Org Name', tree: true },
       { key: 'orgCode', labelZh: '组织编码', labelEn: 'Org Code' },
@@ -230,6 +303,16 @@ export const basicPages: PageConfig[] = [
       selectFilter('roleName', '角色', 'Role', roleOptions),
       selectFilter('status', '状态', 'Status', statusOptions)
     ],
+    topActions: [
+      action('createUser', '新增用户', 'Add User', 'create', { primary: true }),
+      action('importUsers', '批量导入', 'Batch Import', 'import'),
+      action('disableUsers', '停用用户', 'Disable Users', 'disable', { danger: true })
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.detail,
+      commonActions.disable
+    ],
     columns: [
       { key: 'account', labelZh: '账号', labelEn: 'Account' },
       { key: 'username', labelZh: '姓名', labelEn: 'Name' },
@@ -247,6 +330,17 @@ export const basicPages: PageConfig[] = [
     titleEn: 'User Groups',
     endpoint: '/basic/user-groups',
     filters: [inputFilter('keyword', '用户组编码/名称', 'Group code/name'), selectFilter('status', '状态', 'Status', statusOptions)],
+    topActions: [
+      action('createUserGroup', '新增用户组', 'Add User Group', 'create', { primary: true }),
+      action('importUserGroups', '批量导入', 'Batch Import', 'import'),
+      action('disableUserGroups', '停用用户组', 'Disable User Groups', 'disable', { danger: true })
+    ],
+    rowActions: [
+      commonActions.edit,
+      action('manageUsers', '管理用户', 'Manage Users', 'manageUsers', { endpoint: '/basic/user-groups/{id}/members' }),
+      commonActions.detail,
+      commonActions.disable
+    ],
     columns: [
       { key: 'groupCode', labelZh: '用户组编码', labelEn: 'Code' },
       { key: 'groupName', labelZh: '用户组名称', labelEn: 'Name' },
@@ -267,6 +361,15 @@ export const basicPages: PageConfig[] = [
       inputFilter('menuScope', '权限范围', 'Permission Scope'),
       inputFilter('createdAt', '创建时间', 'Created At')
     ],
+    topActions: [
+      action('createRole', '新增角色', 'Add Role', 'create', { primary: true }),
+      action('configurePermissions', '配置权限', 'Configure Permissions', 'permission'),
+      action('copyRole', '复制角色', 'Copy Role', 'copy')
+    ],
+    rowActions: [
+      action('configurePermissions', '配置权限', 'Configure Permissions', 'permission', { endpoint: '/basic/roles/{id}/permissions' }),
+      commonActions.detail
+    ],
     columns: [
       { key: 'roleCode', labelZh: '角色编码', labelEn: 'Code' },
       { key: 'roleName', labelZh: '角色名称', labelEn: 'Name' },
@@ -286,6 +389,15 @@ export const basicPages: PageConfig[] = [
       selectFilter('dictType', '字典类型', 'Dict Type', dictTypeOptions),
       selectFilter('status', '状态', 'Status', statusOptions)
     ],
+    topActions: [
+      action('createDictionary', '新增字典', 'Add Dictionary', 'create', { primary: true }),
+      commonActions.import,
+      commonActions.export
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.delete
+    ],
     columns: [
       { key: 'dictCode', labelZh: '字典编码', labelEn: 'Code' },
       { key: 'dictName', labelZh: '字典名称', labelEn: 'Name' },
@@ -302,6 +414,15 @@ export const basicPages: PageConfig[] = [
     titleEn: 'Energy Types',
     endpoint: '/basic/energy-types',
     filters: [inputFilter('energyName', '能源名称', 'Energy Name'), inputFilter('energyUnit', '能源单位', 'Energy Unit')],
+    topActions: [
+      action('createEnergyType', '新增能源类型', 'Add Energy Type', 'create', { primary: true }),
+      action('importEnergyTypes', '导入能源类型', 'Import Energy Types', 'import'),
+      action('exportEnergyTypes', '导出能源类型', 'Export Energy Types', 'export')
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.delete
+    ],
     columns: [
       { key: 'energyName', labelZh: '能源名称', labelEn: 'Name' },
       { key: 'energyUnit', labelZh: '能源单位', labelEn: 'Unit' },
@@ -337,6 +458,15 @@ export const basicPages: PageConfig[] = [
       inputFilter('effectiveStart', '执行开始时间', 'Start Date'),
       inputFilter('effectiveEnd', '执行结束时间', 'End Date')
     ],
+    topActions: [
+      action('createEnergyPrice', '新增价格', 'Add Price', 'create', { primary: true }),
+      commonActions.import,
+      commonActions.export
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.disable
+    ],
     columns: [
       { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy' },
       { key: 'priceType', labelZh: '价格类型', labelEn: 'Price Type' },
@@ -359,6 +489,14 @@ export const basicPages: PageConfig[] = [
       selectFilter('modelType', '模型类型', 'Model Type', modelTypeOptions),
       selectFilter('status', '状态', 'Status', statusOptions)
     ],
+    topActions: [
+      action('createDeviceModel', '新增模型', 'Add Model', 'create', { primary: true }),
+      action('copyDeviceModel', '复制模型', 'Copy Model', 'copy')
+    ],
+    rowActions: [
+      action('manageModelParams', '维护参数', 'Manage Params', 'manageParams'),
+      action('modelDetail', '模型详情', 'Model Detail', 'detail')
+    ],
     columns: [
       { key: 'modelCode', labelZh: '模型编码', labelEn: 'Model Code' },
       { key: 'modelName', labelZh: '模型名称', labelEn: 'Model Name' },
@@ -378,6 +516,14 @@ export const basicPages: PageConfig[] = [
       inputFilter('modelName', '设备模型', 'Device Model'),
       selectFilter('bindingStatus', '参数绑定状态', 'Binding Status', bindingOptions)
     ],
+    topActions: [
+      action('createDevice', '新增设备', 'Add Device', 'create', { primary: true })
+    ],
+    rowActions: [
+      action('manageDeviceParams', '参数管理', 'Manage Params', 'manageParams'),
+      commonActions.edit,
+      action('copyDevice', '复制', 'Copy', 'copy')
+    ],
     columns: [
       { key: 'modelType', labelZh: '模型类别', labelEn: 'Model Type' },
       { key: 'modelName', labelZh: '模型名称', labelEn: 'Model Name' },
@@ -394,6 +540,16 @@ export const basicPages: PageConfig[] = [
     titleZh: '统计模型',
     titleEn: 'Stat Models',
     endpoint: '/basic/stat-models',
+    topActions: [
+      action('createStatModel', '新增统计模型', 'Add Stat Model', 'create', { primary: true }),
+      action('manualStatParamRelation', '手动关联参数', 'Link Params', 'permission'),
+      action('importStatTree', '批量导入模型树', 'Import Model Tree', 'import', { endpoint: '/basic/stat-models/import-tree' }),
+      action('importStatParamRelations', '导入参数关联', 'Import Param Links', 'import', { endpoint: '/basic/stat-models/import-param-relations' })
+    ],
+    rowActions: [
+      action('linkStatParams', '关联参数', 'Link Params', 'permission', { endpoint: '/basic/stat-nodes/{id}/param-relations' }),
+      commonActions.detail
+    ],
     columns: [
       { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy' },
       { key: 'statModelCode', labelZh: '统计模型编码', labelEn: 'Model Code' },
@@ -407,6 +563,14 @@ export const basicPages: PageConfig[] = [
     titleZh: '产能中心',
     titleEn: 'Capacity Centers',
     endpoint: '/basic/capacity-data',
+    topActions: [
+      action('createCapacityCenter', '新增产能中心', 'Add Capacity Center', 'create', { primary: true }),
+      commonActions.import,
+      commonActions.export
+    ],
+    rowActions: [
+      action('inputCapacity', '录入', 'Input', 'input', { endpoint: '/basic/capacity-data/batch-save' })
+    ],
     columns: [
       { key: 'centerName', labelZh: '产能中心', labelEn: 'Capacity Center' },
       { key: 'dataType', labelZh: '数据类型', labelEn: 'Data Type' },
@@ -423,6 +587,15 @@ export const basicPages: PageConfig[] = [
     titleZh: '单耗配置',
     titleEn: 'Unit Consumption',
     endpoint: '/basic/unit-consumption-relations',
+    topActions: [
+      action('createUnitConsumption', '新增关联', 'Add Relation', 'create', { primary: true, endpoint: '/basic/unit-consumption-relations' }),
+      action('importUnitConsumption', '批量导入关联', 'Import Relations', 'import'),
+      commonActions.export
+    ],
+    rowActions: [
+      commonActions.edit,
+      action('unlinkUnitConsumption', '取消关联', 'Unlink', 'unlink', { danger: true })
+    ],
     columns: [
       { key: 'centerCode', labelZh: '产能中心编码', labelEn: 'Center Code' },
       { key: 'centerName', labelZh: '产能中心名称', labelEn: 'Center Name' },
@@ -439,6 +612,16 @@ export const basicPages: PageConfig[] = [
     titleZh: '指标配置',
     titleEn: 'Indicators',
     endpoint: '/basic/indicator-data',
+    topActions: [
+      action('createIndicator', '新增指标', 'Add Indicator', 'create', { primary: true }),
+      action('inputIndicator', '手动录入', 'Manual Input', 'input', { endpoint: '/basic/indicator-data/batch-save' }),
+      commonActions.import,
+      commonActions.export
+    ],
+    rowActions: [
+      action('inputIndicator', '手动录入', 'Manual Input', 'input', { endpoint: '/basic/indicator-data/batch-save' }),
+      commonActions.detail
+    ],
     columns: [
       { key: 'statNodeName', labelZh: '统计节点', labelEn: 'Stat Node' },
       { key: 'indicatorCode', labelZh: '指标编码', labelEn: 'Code' },
@@ -463,6 +646,14 @@ export const basicPages: PageConfig[] = [
       inputFilter('collectionParamMark', '参数标识', 'Param Mark'),
       inputFilter('businessName', '业务名称', 'Business Name')
     ],
+    topActions: [
+      action('createCollectionPoint', '新增点位', 'Add Point', 'create', { primary: true }),
+      commonActions.import,
+      commonActions.export
+    ],
+    rowActions: [
+      commonActions.edit
+    ],
     columns: [
       { key: 'collectionModelMark', labelZh: '采集模型标识', labelEn: 'Model Mark' },
       { key: 'collectionDeviceMark', labelZh: '采集设备标识', labelEn: 'Device Mark' },
@@ -480,6 +671,13 @@ export const basicPages: PageConfig[] = [
       inputFilter('keyword', '班次编码/名称', 'Shift code/name'),
       selectFilter('crossDay', '是否跨天', 'Cross Day', yesNoOptions),
       selectFilter('status', '启用状态', 'Status', statusOptions)
+    ],
+    topActions: [
+      action('createShift', '新增班次', 'Add Shift', 'create', { primary: true })
+    ],
+    rowActions: [
+      commonActions.edit,
+      commonActions.disable
     ],
     columns: [
       { key: 'shiftCode', labelZh: '班次编码', labelEn: 'Code' },

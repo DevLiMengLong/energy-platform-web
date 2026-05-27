@@ -83,6 +83,36 @@ export interface FormFieldConfig {
   options?: Array<{ labelZh: string; labelEn: string; value: string | number | boolean }>;
 }
 
+export type ActionKind =
+  | 'create'
+  | 'edit'
+  | 'detail'
+  | 'disable'
+  | 'enable'
+  | 'delete'
+  | 'export'
+  | 'import'
+  | 'assign'
+  | 'permission'
+  | 'resetPassword'
+  | 'manageUsers'
+  | 'manageParams'
+  | 'copy'
+  | 'bind'
+  | 'unlink'
+  | 'input'
+  | 'generic';
+
+export interface ActionConfig {
+  key: string;
+  labelZh: string;
+  labelEn: string;
+  kind: ActionKind;
+  primary?: boolean;
+  danger?: boolean;
+  endpoint?: string;
+}
+
 export interface PageConfig {
   routePath: string;
   titleZh: string;
@@ -91,6 +121,8 @@ export interface PageConfig {
   mode?: 'table' | 'tree' | 'treeTable';
   columns?: ColumnConfig[];
   filters?: FilterConfig[];
+  topActions?: ActionConfig[];
+  rowActions?: ActionConfig[];
   create?: {
     titleZh: string;
     titleEn: string;
