@@ -326,6 +326,7 @@ onBeforeUnmount(() => {
         >
           <Building2 v-if="module.code === 'platform'" :size="16" />
           <ShieldCheck v-else-if="module.code === 'basic'" :size="16" />
+          <RadioTower v-else-if="module.code === 'cleaning'" :size="16" />
           <Menu v-else :size="16" />
           <span>{{ pickLabel(language, module.nameZh, module.nameEn) }}</span>
         </button>

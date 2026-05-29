@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@energy-platform/basic-info": "0.1.0",
+    "@energy-platform/data-cleaning": "0.1.0",
     "@energy-platform/platform-admin": "0.1.0",
     "@energy-platform/shared": "0.1.0"
   }

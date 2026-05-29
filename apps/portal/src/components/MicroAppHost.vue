@@ -26,6 +26,13 @@ async function loadMount(code: string): Promise<MountMicroApp | null> {
     const entry = '/basic-info/assets/entry.js';
     return (await import(/* @vite-ignore */ entry)).mount;
   }
+  if (code === 'cleaning') {
+    if (import.meta.env.DEV) {
+      return (await import('@energy-platform/data-cleaning/micro')).mount;
+    }
+    const entry = '/data-cleaning/assets/entry.js';
+    return (await import(/* @vite-ignore */ entry)).mount;
+  }
   return null;
 }
 
