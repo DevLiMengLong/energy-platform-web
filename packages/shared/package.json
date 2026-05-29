@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./EpSelect.vue": "./src/EpSelect.vue",
     "./styles.css": "./src/styles.css"
   }
 }

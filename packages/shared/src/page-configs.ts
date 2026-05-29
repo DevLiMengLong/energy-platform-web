@@ -1,7 +1,7 @@
 import type { ActionConfig, FilterConfig, PageConfig } from './types';
 
 const statusColumn = { key: 'status', labelZh: '状态', labelEn: 'Status', type: 'status' as const, width: '112px' };
-const actionsColumn = { key: '_actions', labelZh: '操作', labelEn: 'Actions', type: 'actions' as const, width: '150px' };
+const actionsColumn = { key: '_actions', labelZh: '操作', labelEn: 'Actions', type: 'actions' as const, width: '220px' };
 
 const statusOptions = [
   { labelZh: '全部', labelEn: 'All', value: '' },
@@ -24,9 +24,11 @@ const authStatusOptions = [
 const subsystemOptions = [
   { labelZh: '全部', labelEn: 'All', value: '' },
   { labelZh: '基础信息', labelEn: 'Basic Info', value: 'basic' },
-  { labelZh: '数据采集', labelEn: 'Data Access', value: 'data-cleaning' },
+  { labelZh: '数据清洗', labelEn: 'Data Cleaning', value: 'cleaning' },
   { labelZh: '报表分析', labelEn: 'Reports', value: 'report' }
 ];
+
+const selectableSubsystemOptions = subsystemOptions.filter((option) => option.value);
 
 const industryOptions = [
   { labelZh: '全部', labelEn: 'All', value: '' },
@@ -94,7 +96,7 @@ function action(
   labelZh: string,
   labelEn: string,
   kind: ActionConfig['kind'],
-  options: Pick<ActionConfig, 'primary' | 'danger' | 'endpoint'> = {}
+  options: Pick<ActionConfig, 'primary' | 'danger' | 'endpoint' | 'requiresSelection'> = {}
 ): ActionConfig {
   return { key, labelZh, labelEn, kind, ...options };
 }
@@ -126,7 +128,7 @@ export const platformPages: PageConfig[] = [
     topActions: [
       action('createTenant', '新增租户', 'Add Tenant', 'create', { primary: true }),
       action('exportTenants', '导出租户', 'Export Tenants', 'export'),
-      action('batchDisableTenants', '停用租户', 'Disable Tenants', 'disable', { danger: true })
+      action('batchDisableTenants', '停用租户', 'Disable Tenants', 'disable', { danger: true, requiresSelection: true })
     ],
     rowActions: [
       commonActions.edit,
@@ -151,6 +153,16 @@ export const platformPages: PageConfig[] = [
         { key: 'contactName', labelZh: '联系人', labelEn: 'Contact' },
         { key: 'contactPhone', labelZh: '联系电话', labelEn: 'Phone' }
       ]
+    },
+    edit: {
+      fields: [
+        { key: 'tenantName', labelZh: '租户名称', labelEn: 'Tenant Name', required: true },
+        { key: 'tenantMark', labelZh: '租户标识', labelEn: 'Tenant Mark' },
+        { key: 'industry', labelZh: '行业类型', labelEn: 'Industry' },
+        { key: 'contactName', labelZh: '联系人', labelEn: 'Contact' },
+        { key: 'contactPhone', labelZh: '联系电话', labelEn: 'Phone' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
     }
   },
   {
@@ -166,10 +178,11 @@ export const platformPages: PageConfig[] = [
     ],
     topActions: [
       action('createTenantAdmin', '新增租户超管', 'Add Tenant Admin', 'create', { primary: true }),
-      action('resetTenantAdminPassword', '重置密码', 'Reset Password', 'resetPassword'),
-      action('disableTenantAdmin', '禁用账号', 'Disable Account', 'disable', { danger: true })
+      action('resetTenantAdminPassword', '重置密码', 'Reset Password', 'resetPassword', { requiresSelection: true }),
+      action('disableTenantAdmin', '禁用账号', 'Disable Account', 'disable', { danger: true, requiresSelection: true })
     ],
     rowActions: [
+      commonActions.edit,
       action('resetPassword', '重置密码', 'Reset Password', 'resetPassword', { endpoint: '/platform/tenant-admins/{id}/reset-password' }),
       action('disableAccount', '禁用', 'Disable', 'disable', { danger: true })
     ],
@@ -181,7 +194,31 @@ export const platformPages: PageConfig[] = [
       { key: 'lastLoginAt', labelZh: '最近登录', labelEn: 'Last Login' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增租户超管',
+      titleEn: 'Create Tenant Admin',
+      endpoint: '/platform/tenant-admins',
+      fields: [
+        { key: 'tenantMark', labelZh: '所属租户', labelEn: 'Tenant', required: true },
+        { key: 'account', labelZh: '管理员账号', labelEn: 'Admin Account', required: true },
+        { key: 'username', labelZh: '姓名', labelEn: 'Name', required: true },
+        { key: 'phone', labelZh: '手机号', labelEn: 'Phone' },
+        { key: 'email', labelZh: '邮箱', labelEn: 'Email' },
+        { key: 'initialPassword', labelZh: '初始密码', labelEn: 'Initial Password' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'tenantMark', labelZh: '所属租户', labelEn: 'Tenant', required: true },
+        { key: 'account', labelZh: '管理员账号', labelEn: 'Admin Account', required: true },
+        { key: 'username', labelZh: '姓名', labelEn: 'Name', required: true },
+        { key: 'phone', labelZh: '手机号', labelEn: 'Phone' },
+        { key: 'email', labelZh: '邮箱', labelEn: 'Email' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/platform/subsystems',
@@ -205,7 +242,28 @@ export const platformPages: PageConfig[] = [
       { key: 'entryUrl', labelZh: '访问地址', labelEn: 'Entry URL' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增子系统',
+      titleEn: 'Create Subsystem',
+      endpoint: '/platform/subsystems',
+      fields: [
+        { key: 'nameZh', labelZh: '系统名称', labelEn: 'System Name', required: true },
+        { key: 'subsystemCode', labelZh: '系统标识', labelEn: 'System Code', required: true },
+        { key: 'description', labelZh: '描述', labelEn: 'Description', type: 'textarea' },
+        { key: 'entryUrl', labelZh: '访问地址', labelEn: 'Entry URL' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'nameZh', labelZh: '系统名称', labelEn: 'System Name', required: true },
+        { key: 'subsystemCode', labelZh: '系统标识', labelEn: 'System Code', required: true },
+        { key: 'description', labelZh: '描述', labelEn: 'Description', type: 'textarea' },
+        { key: 'entryUrl', labelZh: '访问地址', labelEn: 'Entry URL' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/platform/menus',
@@ -236,7 +294,38 @@ export const platformPages: PageConfig[] = [
       { key: 'hidden', labelZh: '是否隐藏', labelEn: 'Hidden', type: 'visibility', width: '92px' },
       { key: 'createdAt', labelZh: '创建日期', labelEn: 'Created At' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增菜单',
+      titleEn: 'Create Menu',
+      endpoint: '/platform/menus',
+      fields: [
+        { key: 'subsystemCode', labelZh: '子系统', labelEn: 'Subsystem', type: 'select', options: selectableSubsystemOptions, required: true },
+        { key: 'parentMenuCode', labelZh: '上级菜单', labelEn: 'Parent Menu' },
+        { key: 'nameZh', labelZh: '菜单名称', labelEn: 'Menu Name', required: true },
+        { key: 'nameEn', labelZh: '英文名称', labelEn: 'English Name' },
+        { key: 'menuCode', labelZh: '菜单标识', labelEn: 'Menu Code', required: true },
+        { key: 'permissionCode', labelZh: '权限标识', labelEn: 'Permission' },
+        { key: 'routePath', labelZh: '路由地址', labelEn: 'Route' },
+        { key: 'componentPath', labelZh: '组件路径', labelEn: 'Component Path' },
+        { key: 'sortOrder', labelZh: '排序', labelEn: 'Sort', type: 'number' },
+        { key: 'hidden', labelZh: '是否隐藏', labelEn: 'Hidden', type: 'boolean' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'subsystemCode', labelZh: '子系统', labelEn: 'Subsystem', type: 'select', options: selectableSubsystemOptions, required: true },
+        { key: 'parentMenuCode', labelZh: '上级菜单', labelEn: 'Parent Menu' },
+        { key: 'nameZh', labelZh: '菜单名称', labelEn: 'Menu Name', required: true },
+        { key: 'nameEn', labelZh: '英文名称', labelEn: 'English Name' },
+        { key: 'menuCode', labelZh: '菜单标识', labelEn: 'Menu Code', required: true },
+        { key: 'permissionCode', labelZh: '权限标识', labelEn: 'Permission' },
+        { key: 'routePath', labelZh: '路由地址', labelEn: 'Route' },
+        { key: 'componentPath', labelZh: '组件路径', labelEn: 'Component Path' },
+        { key: 'sortOrder', labelZh: '排序', labelEn: 'Sort', type: 'number' },
+        { key: 'hidden', labelZh: '是否隐藏', labelEn: 'Hidden', type: 'boolean' }
+      ]
+    }
   },
   {
     routePath: '/platform/tenant-permissions',
@@ -249,7 +338,7 @@ export const platformPages: PageConfig[] = [
       selectFilter('authStatus', '授权状态', 'Auth Status', authStatusOptions)
     ],
     topActions: [
-      action('assignTenantPermissions', '分配权限', 'Assign Permissions', 'assign', { primary: true, endpoint: '/platform/tenant-permissions' })
+      action('assignTenantPermissions', '分配权限', 'Assign Permissions', 'assign', { primary: true, endpoint: '/platform/tenant-permissions', requiresSelection: true })
     ],
     rowActions: [
       action('assignTenantPermissions', '分配权限', 'Assign Permissions', 'assign', { endpoint: '/platform/tenant-permissions' }),
@@ -281,7 +370,8 @@ export const basicPages: PageConfig[] = [
     ],
     rowActions: [
       commonActions.edit,
-      commonActions.detail
+      commonActions.detail,
+      commonActions.disable
     ],
     columns: [
       { key: 'orgName', labelZh: '组织名称', labelEn: 'Org Name', tree: true },
@@ -289,7 +379,26 @@ export const basicPages: PageConfig[] = [
       { key: 'sortOrder', labelZh: '排序', labelEn: 'Sort', type: 'number' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增节点',
+      titleEn: 'Create Org Node',
+      endpoint: '/basic/org-nodes',
+      fields: [
+        { key: 'orgName', labelZh: '组织名称', labelEn: 'Org Name', required: true },
+        { key: 'orgCode', labelZh: '组织编码', labelEn: 'Org Code', required: true },
+        { key: 'parentOrgName', labelZh: '上级组织', labelEn: 'Parent Org' },
+        { key: 'sortOrder', labelZh: '排序号', labelEn: 'Sort Order', type: 'number' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'orgName', labelZh: '组织名称', labelEn: 'Org Name', required: true },
+        { key: 'orgCode', labelZh: '组织编码', labelEn: 'Org Code', required: true },
+        { key: 'parentOrgName', labelZh: '上级组织', labelEn: 'Parent Org' },
+        { key: 'sortOrder', labelZh: '排序号', labelEn: 'Sort Order', type: 'number' }
+      ]
+    }
   },
   {
     routePath: '/basic/users',
@@ -306,7 +415,7 @@ export const basicPages: PageConfig[] = [
     topActions: [
       action('createUser', '新增用户', 'Add User', 'create', { primary: true }),
       action('importUsers', '批量导入', 'Batch Import', 'import'),
-      action('disableUsers', '停用用户', 'Disable Users', 'disable', { danger: true })
+      action('disableUsers', '停用用户', 'Disable Users', 'disable', { danger: true, requiresSelection: true })
     ],
     rowActions: [
       commonActions.edit,
@@ -322,7 +431,32 @@ export const basicPages: PageConfig[] = [
       { key: 'orgName', labelZh: '所属组织', labelEn: 'Org' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增用户',
+      titleEn: 'Create User',
+      endpoint: '/basic/users',
+      fields: [
+        { key: 'account', labelZh: '账号', labelEn: 'Account', required: true },
+        { key: 'username', labelZh: '姓名', labelEn: 'Name', required: true },
+        { key: 'phone', labelZh: '手机号', labelEn: 'Phone' },
+        { key: 'email', labelZh: '邮箱', labelEn: 'Email' },
+        { key: 'roleName', labelZh: '角色', labelEn: 'Role', multiple: true },
+        { key: 'orgName', labelZh: '所属组织', labelEn: 'Org' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'account', labelZh: '账号', labelEn: 'Account', required: true },
+        { key: 'username', labelZh: '姓名', labelEn: 'Name', required: true },
+        { key: 'phone', labelZh: '手机号', labelEn: 'Phone' },
+        { key: 'email', labelZh: '邮箱', labelEn: 'Email' },
+        { key: 'roleName', labelZh: '角色', labelEn: 'Role', multiple: true },
+        { key: 'orgName', labelZh: '所属组织', labelEn: 'Org' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/user-groups',
@@ -333,7 +467,7 @@ export const basicPages: PageConfig[] = [
     topActions: [
       action('createUserGroup', '新增用户组', 'Add User Group', 'create', { primary: true }),
       action('importUserGroups', '批量导入', 'Batch Import', 'import'),
-      action('disableUserGroups', '停用用户组', 'Disable User Groups', 'disable', { danger: true })
+      action('disableUserGroups', '停用用户组', 'Disable User Groups', 'disable', { danger: true, requiresSelection: true })
     ],
     rowActions: [
       commonActions.edit,
@@ -348,7 +482,26 @@ export const basicPages: PageConfig[] = [
       { key: 'remark', labelZh: '备注', labelEn: 'Remark' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增用户组',
+      titleEn: 'Create User Group',
+      endpoint: '/basic/user-groups',
+      fields: [
+        { key: 'groupCode', labelZh: '用户组编码', labelEn: 'Code', required: true },
+        { key: 'groupName', labelZh: '用户组名称', labelEn: 'Name', required: true },
+        { key: 'remark', labelZh: '备注', labelEn: 'Remark', type: 'textarea' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'groupCode', labelZh: '用户组编码', labelEn: 'Code', required: true },
+        { key: 'groupName', labelZh: '用户组名称', labelEn: 'Name', required: true },
+        { key: 'remark', labelZh: '备注', labelEn: 'Remark', type: 'textarea' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/roles',
@@ -363,12 +516,13 @@ export const basicPages: PageConfig[] = [
     ],
     topActions: [
       action('createRole', '新增角色', 'Add Role', 'create', { primary: true }),
-      action('configurePermissions', '配置权限', 'Configure Permissions', 'permission'),
-      action('copyRole', '复制角色', 'Copy Role', 'copy')
+      action('configurePermissions', '配置权限', 'Configure Permissions', 'permission', { requiresSelection: true }),
+      action('copyRole', '复制角色', 'Copy Role', 'copy', { requiresSelection: true })
     ],
     rowActions: [
       action('configurePermissions', '配置权限', 'Configure Permissions', 'permission', { endpoint: '/basic/roles/{id}/permissions' }),
-      commonActions.detail
+      commonActions.detail,
+      commonActions.disable
     ],
     columns: [
       { key: 'roleCode', labelZh: '角色编码', labelEn: 'Code' },
@@ -377,7 +531,26 @@ export const basicPages: PageConfig[] = [
       statusColumn,
       { key: 'userCount', labelZh: '用户数', labelEn: 'Users', type: 'number' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增角色',
+      titleEn: 'Create Role',
+      endpoint: '/basic/roles',
+      fields: [
+        { key: 'roleCode', labelZh: '角色编码', labelEn: 'Code', required: true },
+        { key: 'roleName', labelZh: '角色名称', labelEn: 'Name', required: true },
+        { key: 'dataScope', labelZh: '数据权限', labelEn: 'Data Scope' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'roleCode', labelZh: '角色编码', labelEn: 'Code', required: true },
+        { key: 'roleName', labelZh: '角色名称', labelEn: 'Name', required: true },
+        { key: 'dataScope', labelZh: '数据权限', labelEn: 'Data Scope' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/dictionaries',
@@ -396,7 +569,8 @@ export const basicPages: PageConfig[] = [
     ],
     rowActions: [
       commonActions.edit,
-      commonActions.delete
+      commonActions.delete,
+      commonActions.disable
     ],
     columns: [
       { key: 'dictCode', labelZh: '字典编码', labelEn: 'Code' },
@@ -406,7 +580,28 @@ export const basicPages: PageConfig[] = [
       statusColumn,
       { key: 'remark', labelZh: '备注', labelEn: 'Remark' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增字典',
+      titleEn: 'Create Dictionary',
+      endpoint: '/basic/dictionaries',
+      fields: [
+        { key: 'dictCode', labelZh: '字典编码', labelEn: 'Code', required: true },
+        { key: 'dictName', labelZh: '字典名称', labelEn: 'Name', required: true },
+        { key: 'dictType', labelZh: '字典类型', labelEn: 'Type' },
+        { key: 'remark', labelZh: '备注', labelEn: 'Remark', type: 'textarea' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'dictCode', labelZh: '字典编码', labelEn: 'Code', required: true },
+        { key: 'dictName', labelZh: '字典名称', labelEn: 'Name', required: true },
+        { key: 'dictType', labelZh: '字典类型', labelEn: 'Type' },
+        { key: 'remark', labelZh: '备注', labelEn: 'Remark', type: 'textarea' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/energy-types',
@@ -437,6 +632,16 @@ export const basicPages: PageConfig[] = [
       titleZh: '新增能源类型',
       titleEn: 'Create Energy Type',
       endpoint: '/basic/energy-types',
+      fields: [
+        { key: 'energyName', labelZh: '能源名称', labelEn: 'Energy Name', required: true },
+        { key: 'energyUnit', labelZh: '能源单位', labelEn: 'Unit', required: true },
+        { key: 'standardCoalFactor', labelZh: '折标系数', labelEn: 'Coal Factor', type: 'number' },
+        { key: 'standardCoalUnit', labelZh: '折标单位', labelEn: 'Coal Unit' },
+        { key: 'sortOrder', labelZh: '排序', labelEn: 'Sort', type: 'number' },
+        { key: 'remark', labelZh: '备注', labelEn: 'Remark', type: 'textarea' }
+      ]
+    },
+    edit: {
       fields: [
         { key: 'energyName', labelZh: '能源名称', labelEn: 'Energy Name', required: true },
         { key: 'energyUnit', labelZh: '能源单位', labelEn: 'Unit', required: true },
@@ -477,7 +682,34 @@ export const basicPages: PageConfig[] = [
       { key: 'effectiveEnd', labelZh: '执行结束时间', labelEn: 'End Date' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增价格',
+      titleEn: 'Create Price',
+      endpoint: '/basic/energy-prices',
+      fields: [
+        { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy', required: true },
+        { key: 'priceType', labelZh: '价格类型', labelEn: 'Price Type', required: true },
+        { key: 'periodName', labelZh: '时段', labelEn: 'Period' },
+        { key: 'unitPrice', labelZh: '单价', labelEn: 'Unit Price', type: 'number', required: true },
+        { key: 'priceUnit', labelZh: '计价单位', labelEn: 'Price Unit' },
+        { key: 'effectiveStart', labelZh: '执行开始时间', labelEn: 'Start Date' },
+        { key: 'effectiveEnd', labelZh: '执行结束时间', labelEn: 'End Date' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy', required: true },
+        { key: 'priceType', labelZh: '价格类型', labelEn: 'Price Type', required: true },
+        { key: 'periodName', labelZh: '时段', labelEn: 'Period' },
+        { key: 'unitPrice', labelZh: '单价', labelEn: 'Unit Price', type: 'number', required: true },
+        { key: 'priceUnit', labelZh: '计价单位', labelEn: 'Price Unit' },
+        { key: 'effectiveStart', labelZh: '执行开始时间', labelEn: 'Start Date' },
+        { key: 'effectiveEnd', labelZh: '执行结束时间', labelEn: 'End Date' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/device-models',
@@ -495,7 +727,8 @@ export const basicPages: PageConfig[] = [
     ],
     rowActions: [
       action('manageModelParams', '维护参数', 'Manage Params', 'manageParams'),
-      action('modelDetail', '模型详情', 'Model Detail', 'detail')
+      action('modelDetail', '模型详情', 'Model Detail', 'detail'),
+      commonActions.disable
     ],
     columns: [
       { key: 'modelCode', labelZh: '模型编码', labelEn: 'Model Code' },
@@ -504,7 +737,26 @@ export const basicPages: PageConfig[] = [
       { key: 'paramCount', labelZh: '参数数量', labelEn: 'Params', type: 'number' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增模型',
+      titleEn: 'Create Model',
+      endpoint: '/basic/device-models',
+      fields: [
+        { key: 'modelCode', labelZh: '模型编码', labelEn: 'Model Code', required: true },
+        { key: 'modelName', labelZh: '模型名称', labelEn: 'Model Name', required: true },
+        { key: 'modelType', labelZh: '模型类型', labelEn: 'Type', required: true },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'modelCode', labelZh: '模型编码', labelEn: 'Model Code', required: true },
+        { key: 'modelName', labelZh: '模型名称', labelEn: 'Model Name', required: true },
+        { key: 'modelType', labelZh: '模型类型', labelEn: 'Type', required: true },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/devices',
@@ -533,7 +785,26 @@ export const basicPages: PageConfig[] = [
       { key: 'deviceLabel', labelZh: '对象标签', labelEn: 'Label' },
       { key: 'installLocation', labelZh: '安装位置', labelEn: 'Location' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增设备',
+      titleEn: 'Create Device',
+      endpoint: '/basic/devices',
+      fields: [
+        { key: 'deviceCode', labelZh: '设备编码', labelEn: 'Device Code', required: true },
+        { key: 'deviceName', labelZh: '设备名称', labelEn: 'Device Name', required: true },
+        { key: 'modelName', labelZh: '设备模型', labelEn: 'Device Model', required: true },
+        { key: 'installLocation', labelZh: '安装位置', labelEn: 'Location' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'deviceCode', labelZh: '设备编码', labelEn: 'Device Code', required: true },
+        { key: 'deviceName', labelZh: '设备名称', labelEn: 'Device Name', required: true },
+        { key: 'modelName', labelZh: '设备模型', labelEn: 'Device Model', required: true },
+        { key: 'installLocation', labelZh: '安装位置', labelEn: 'Location' }
+      ]
+    }
   },
   {
     routePath: '/basic/stat-models',
@@ -542,13 +813,14 @@ export const basicPages: PageConfig[] = [
     endpoint: '/basic/stat-models',
     topActions: [
       action('createStatModel', '新增统计模型', 'Add Stat Model', 'create', { primary: true }),
-      action('manualStatParamRelation', '手动关联参数', 'Link Params', 'permission'),
+      action('manualStatParamRelation', '手动关联参数', 'Link Params', 'bind'),
       action('importStatTree', '批量导入模型树', 'Import Model Tree', 'import', { endpoint: '/basic/stat-models/import-tree' }),
       action('importStatParamRelations', '导入参数关联', 'Import Param Links', 'import', { endpoint: '/basic/stat-models/import-param-relations' })
     ],
     rowActions: [
-      action('linkStatParams', '关联参数', 'Link Params', 'permission', { endpoint: '/basic/stat-nodes/{id}/param-relations' }),
-      commonActions.detail
+      action('linkStatParams', '关联参数', 'Link Params', 'bind', { endpoint: '/basic/stat-nodes/{id}/param-relations' }),
+      commonActions.detail,
+      commonActions.disable
     ],
     columns: [
       { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy' },
@@ -556,7 +828,26 @@ export const basicPages: PageConfig[] = [
       { key: 'statModelName', labelZh: '统计模型名称', labelEn: 'Model Name' },
       statusColumn,
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增统计模型',
+      titleEn: 'Create Stat Model',
+      endpoint: '/basic/stat-models',
+      fields: [
+        { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy', required: true },
+        { key: 'statModelCode', labelZh: '统计模型编码', labelEn: 'Model Code', required: true },
+        { key: 'statModelName', labelZh: '统计模型名称', labelEn: 'Model Name', required: true },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'energyName', labelZh: '能源类型', labelEn: 'Energy', required: true },
+        { key: 'statModelCode', labelZh: '统计模型编码', labelEn: 'Model Code', required: true },
+        { key: 'statModelName', labelZh: '统计模型名称', labelEn: 'Model Name', required: true },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/capacity-centers',
@@ -580,7 +871,28 @@ export const basicPages: PageConfig[] = [
       { key: 'unit', labelZh: '单位', labelEn: 'Unit' },
       { key: 'sourceType', labelZh: '来源', labelEn: 'Source' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增产能中心',
+      titleEn: 'Create Capacity Center',
+      endpoint: '/basic/capacity-centers',
+      fields: [
+        { key: 'centerCode', labelZh: '产能中心编码', labelEn: 'Center Code', required: true },
+        { key: 'centerName', labelZh: '产能中心名称', labelEn: 'Center Name', required: true },
+        { key: 'parentCenterName', labelZh: '上级产能中心', labelEn: 'Parent Center' },
+        { key: 'unit', labelZh: '默认单位', labelEn: 'Default Unit' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'centerCode', labelZh: '产能中心编码', labelEn: 'Center Code', required: true },
+        { key: 'centerName', labelZh: '产能中心名称', labelEn: 'Center Name', required: true },
+        { key: 'parentCenterName', labelZh: '上级产能中心', labelEn: 'Parent Center' },
+        { key: 'unit', labelZh: '默认单位', labelEn: 'Default Unit' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
+      ]
+    }
   },
   {
     routePath: '/basic/unit-consumption',
@@ -660,7 +972,26 @@ export const basicPages: PageConfig[] = [
       { key: 'collectionParamMark', labelZh: '采集参数标识', labelEn: 'Param Mark' },
       { key: 'businessName', labelZh: '业务名称', labelEn: 'Business Name' },
       actionsColumn
-    ]
+    ],
+    create: {
+      titleZh: '新增点位',
+      titleEn: 'Create Collection Point',
+      endpoint: '/basic/collection-points',
+      fields: [
+        { key: 'collectionModelMark', labelZh: '采集模型标识', labelEn: 'Model Mark', required: true },
+        { key: 'collectionDeviceMark', labelZh: '采集设备标识', labelEn: 'Device Mark', required: true },
+        { key: 'collectionParamMark', labelZh: '采集参数标识', labelEn: 'Param Mark', required: true },
+        { key: 'businessName', labelZh: '业务名称', labelEn: 'Business Name', required: true }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'collectionModelMark', labelZh: '采集模型标识', labelEn: 'Model Mark', required: true },
+        { key: 'collectionDeviceMark', labelZh: '采集设备标识', labelEn: 'Device Mark', required: true },
+        { key: 'collectionParamMark', labelZh: '采集参数标识', labelEn: 'Param Mark', required: true },
+        { key: 'businessName', labelZh: '业务名称', labelEn: 'Business Name', required: true }
+      ]
+    }
   },
   {
     routePath: '/basic/shifts',
@@ -696,6 +1027,16 @@ export const basicPages: PageConfig[] = [
         { key: 'startTime', labelZh: '开始时间', labelEn: 'Start Time', type: 'time', required: true },
         { key: 'endTime', labelZh: '结束时间', labelEn: 'End Time', type: 'time', required: true },
         { key: 'crossDay', labelZh: '跨天', labelEn: 'Cross Day', type: 'boolean' }
+      ]
+    },
+    edit: {
+      fields: [
+        { key: 'shiftCode', labelZh: '班次编码', labelEn: 'Shift Code', required: true },
+        { key: 'shiftName', labelZh: '班次名称', labelEn: 'Shift Name', required: true },
+        { key: 'startTime', labelZh: '开始时间', labelEn: 'Start Time', type: 'time', required: true },
+        { key: 'endTime', labelZh: '结束时间', labelEn: 'End Time', type: 'time', required: true },
+        { key: 'crossDay', labelZh: '跨天', labelEn: 'Cross Day', type: 'boolean' },
+        { key: 'status', labelZh: '状态', labelEn: 'Status' }
       ]
     }
   }

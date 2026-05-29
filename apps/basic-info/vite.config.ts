@@ -2,6 +2,9 @@ import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
+const apiProxyTarget = process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8090';
+const logProxyTarget = process.env.LOG_PROXY_TARGET ?? 'http://127.0.0.1:8091';
+
 export default defineConfig({
   plugins: [vue()],
   define: {
@@ -9,9 +12,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/basic': 'http://127.0.0.1:8090',
-      '/api/platform': 'http://127.0.0.1:8090',
-      '/api/logs': 'http://127.0.0.1:8091'
+      '/api/basic': apiProxyTarget,
+      '/api/platform': apiProxyTarget,
+      '/api/logs': logProxyTarget
     }
   },
   build: {

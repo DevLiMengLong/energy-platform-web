@@ -26,7 +26,7 @@ const enumLabels: Record<string, EnumLabel> = {
   COMPONENT: { zh: '组件', en: 'Component' },
 
   DEVICE: { zh: '设备', en: 'Device' },
-  METER: { zh: '仪表', en: 'Meter' },
+  METER: { zh: '表计', en: 'Meter' },
   BUSINESS: { zh: '业务', en: 'Business' },
   STAT_MODEL: { zh: '统计模型', en: 'Stat model' },
 
@@ -48,6 +48,21 @@ const enumLabels: Record<string, EnumLabel> = {
 
   YES: { zh: '是', en: 'Yes' },
   NO: { zh: '否', en: 'No' }
+};
+
+const enumOptionsByField: Record<string, string[]> = {
+  authStatus: ['AUTHORIZED', 'UNAUTHORIZED'],
+  dataType: ['INSTANT', 'ACCUMULATED', 'NUMERIC'],
+  dictType: ['SYSTEM', 'BUSINESS'],
+  indicatorType: ['OUTPUT', 'UNIT_ENERGY', 'CAPACITY', 'ENERGY_USAGE'],
+  initStatus: ['INITIALIZED', 'NOT_INITIALIZED'],
+  modelType: ['METER', 'DEVICE'],
+  periodType: ['DAY', 'MONTH'],
+  permissionType: ['SUBSYSTEM', 'MENU', 'COMPONENT'],
+  priceType: ['AVERAGE', 'TIME_OF_USE'],
+  roleType: ['PLATFORM_ADMIN', 'TENANT_ADMIN', 'TENANT_USER'],
+  sourceType: ['MANUAL', 'IMPORT'],
+  status: ['ENABLED', 'DISABLED']
 };
 
 const enumFieldKeys = new Set([
@@ -80,6 +95,13 @@ export function formatEnumLabel(value: unknown, language: Language): string | nu
   }
   const label = enumLabels[value];
   return label ? label[language] : null;
+}
+
+export function getEnumOptionsForField(fieldKey: string): Array<{ labelZh: string; labelEn: string; value: string }> {
+  return (enumOptionsByField[fieldKey] ?? []).flatMap((value) => {
+    const optionLabel = enumLabels[value];
+    return optionLabel ? [{ labelZh: optionLabel.zh, labelEn: optionLabel.en, value }] : [];
+  });
 }
 
 export function formatCellValue(value: unknown, language: Language, fieldKey?: string): string {

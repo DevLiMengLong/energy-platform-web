@@ -80,6 +80,7 @@ export interface FormFieldConfig {
   labelEn: string;
   type?: 'text' | 'number' | 'time' | 'textarea' | 'select' | 'boolean';
   required?: boolean;
+  multiple?: boolean;
   options?: Array<{ labelZh: string; labelEn: string; value: string | number | boolean }>;
 }
 
@@ -111,6 +112,7 @@ export interface ActionConfig {
   primary?: boolean;
   danger?: boolean;
   endpoint?: string;
+  requiresSelection?: boolean;
 }
 
 export interface PageConfig {
@@ -127,6 +129,9 @@ export interface PageConfig {
     titleZh: string;
     titleEn: string;
     endpoint: string;
+    fields: FormFieldConfig[];
+  };
+  edit?: {
     fields: FormFieldConfig[];
   };
 }
